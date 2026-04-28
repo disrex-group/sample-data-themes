@@ -1,0 +1,27 @@
+parameters:
+    # Magento and several adjacent frameworks (e.g. SampleData) are not
+    # autoloaded in this repo — the package is installed into a real Magento
+    # app to run. Symfony Console and PSR Log are pulled in as dev deps so
+    # PHPStan can analyse the CLI commands fully.
+    level: 4
+    paths:
+        - packages/core
+    excludePaths:
+        - packages/core/Test/*
+        - packages/core/registration.php
+        - packages/core/Setup/SampleData/Installer.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    universalObjectCratesClasses:
+        - Magento\Framework\DataObject
+    ignoreErrors:
+        # Magento autoloaded only inside a real install.
+        - '#Magento\\#'
+        - '#Class .*Magento\\.* not found#'
+        - '#Call to method .* on an unknown class Magento\\#'
+        - '#Parameter .* has invalid type Magento\\#'
+        - '#PHPDoc tag @var .* contains unknown class Magento\\#'
+        - '#return type has invalid type Magento\\#'
+        # Magento DataObject magic getters/setters.
+        - '#Call to an undefined method .*::set[A-Z]#'
+        - '#Call to an undefined method .*::get[A-Z]#'

@@ -1,0 +1,14 @@
+/vendor/
+/composer.lock
+/.phpunit.cache/
+/.phpunit.result.cache
+/.phpstan.cache/
+/build/
+/coverage/
+
+# Editor / OS detritus
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

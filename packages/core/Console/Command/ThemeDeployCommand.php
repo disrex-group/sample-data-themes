@@ -1,0 +1,239 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Disrex\SampleDataThemesCore\Console\Command;
+
+use Disrex\SampleDataThemesCore\Api\ThemeInterface;
+use Disrex\SampleDataThemesCore\Exception\MissingStoreviewException;
+use Disrex\SampleDataThemesCore\Helper\Fixture\StoreviewManager;
+use Disrex\SampleDataThemesCore\Model\FixtureRunner;
+use Disrex\SampleDataThemesCore\Model\ThemeRegistry;
+use Magento\Framework\App\State as AppState;
+use Magento\Framework\Registry;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ChoiceQuestion;
+
+class ThemeDeployCommand extends Command
+{
+    public const NAME = 'sampledata:theme:deploy';
+
+    public const OPT_THEME = 'theme';
+    public const OPT_LOCALES = 'locales';
+    public const OPT_DEFAULT_LOCALE = 'default-locale';
+    public const OPT_AUTO_CREATE = 'auto-create-storeviews';
+    public const OPT_SKIP_MEDIA = 'skip-media';
+    public const OPT_DRY_RUN = 'dry-run';
+    public const OPT_FORCE = 'force';
+
+    public function __construct(
+        private readonly ThemeRegistry $registry,
+        private readonly FixtureRunner $runner,
+        private readonly StoreviewManager $storeviewManager,
+        private readonly AppState $appState,
+        private readonly Registry $magentoRegistry
+    ) {
+        parent::__construct();
+    }
+
+    protected function configure(): void
+    {
+        $this->setName(self::NAME)
+            ->setDescription('Deploy a sample-data theme.')
+            ->addOption(self::OPT_THEME, null, InputOption::VALUE_REQUIRED, 'Theme code (skip the prompt).')
+            ->addOption(
+                self::OPT_LOCALES,
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Comma-separated locales to import. Defaults to all locales the theme supports.'
+            )
+            ->addOption(
+                self::OPT_DEFAULT_LOCALE,
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Locale whose content goes to storeviews without an explicit match.'
+            )
+            ->addOption(
+                self::OPT_AUTO_CREATE,
+                null,
+                InputOption::VALUE_NONE,
+                'Auto-create missing storeviews instead of failing.'
+            )
+            ->addOption(self::OPT_SKIP_MEDIA, null, InputOption::VALUE_NONE, 'Skip image import.')
+            ->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Print plan; do not write.')
+            ->addOption(self::OPT_FORCE, null, InputOption::VALUE_NONE, 'Re-run even if already installed.');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $this->prepareEnvironment();
+
+        $theme = $this->resolveTheme($input, $output);
+        if (!$theme) {
+            return Command::FAILURE;
+        }
+
+        $locales = $this->resolveLocales($input, $theme);
+
+        $output->writeln(sprintf('<info>Theme:</info> %s — %s', $theme->getCode(), $theme->getName()));
+        $output->writeln(sprintf('<info>Locales:</info> %s', implode(', ', $locales)));
+
+        $autoCreate = (bool) $input->getOption(self::OPT_AUTO_CREATE);
+        if (!$this->ensureStoreviews($locales, $autoCreate, $output)) {
+            return Command::FAILURE;
+        }
+
+        if ($input->getOption(self::OPT_DRY_RUN)) {
+            $output->writeln('<comment>Dry run — fixtures listed but not executed:</comment>');
+            foreach ($theme->getFixtures() as $cls) {
+                $output->writeln('  - ' . $cls);
+            }
+            return Command::SUCCESS;
+        }
+
+        $this->signalDeployContext($input, $theme, $locales);
+
+        $output->writeln(sprintf('<info>Deploying theme:</info> %s', $theme->getCode()));
+        $result = $this->runner->run($theme, $output);
+
+        $this->summarize($result, $output);
+
+        $output->writeln('');
+        $output->writeln(
+            '<comment>Run </comment>'
+            . '<info>bin/magento setup:upgrade && bin/magento indexer:reindex</info>'
+            . '<comment> to finalize.</comment>'
+        );
+
+        return $result->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    private function resolveTheme(InputInterface $input, OutputInterface $output): ?ThemeInterface
+    {
+        if ($this->registry->isEmpty()) {
+            $output->writeln('<error>No sample-data themes are registered.</error>');
+            return null;
+        }
+
+        $code = $input->getOption(self::OPT_THEME);
+        if (is_string($code) && $code !== '') {
+            if (!$this->registry->has($code)) {
+                $output->writeln(sprintf('<error>Theme "%s" is not registered.</error>', $code));
+                return null;
+            }
+            return $this->registry->get($code);
+        }
+
+        $codes = array_keys($this->registry->all());
+        if (count($codes) === 1) {
+            return $this->registry->get($codes[0]);
+        }
+
+        $choices = [];
+        foreach ($this->registry->all() as $t) {
+            $choices[$t->getCode()] = sprintf(
+                '%s — %s (locales: %s)',
+                $t->getName(),
+                $t->getDescription(),
+                implode(', ', $t->getSupportedLocales())
+            );
+        }
+        $question = new ChoiceQuestion('<question>Choose a theme:</question>', $choices);
+        $question->setErrorMessage('Theme "%s" is not registered.');
+
+        /** @var QuestionHelper $helper */
+        $helper = $this->getHelper('question');
+        $selected = (string) $helper->ask($input, $output, $question);
+        return $this->registry->get($selected);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveLocales(InputInterface $input, ThemeInterface $theme): array
+    {
+        $raw = $input->getOption(self::OPT_LOCALES);
+        if (is_string($raw) && $raw !== '') {
+            $requested = array_filter(array_map('trim', explode(',', $raw)));
+            $supported = $theme->getSupportedLocales();
+            $unknown = array_diff($requested, $supported);
+            if ($unknown !== []) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Theme "%s" does not ship locales: %s. Supported: %s.',
+                    $theme->getCode(),
+                    implode(', ', $unknown),
+                    implode(', ', $supported)
+                ));
+            }
+            return array_values($requested);
+        }
+        return $theme->getSupportedLocales();
+    }
+
+    /**
+     * @param array<int, string> $locales
+     */
+    private function ensureStoreviews(array $locales, bool $autoCreate, OutputInterface $output): bool
+    {
+        $output->writeln('<info>Storeview check:</info>');
+        $allOk = true;
+        foreach ($locales as $locale) {
+            try {
+                $ids = $this->storeviewManager->ensureStoreviewForLocale($locale, $autoCreate);
+                $output->writeln(sprintf(
+                    '  <info>✓</info> %s → store ids %s',
+                    $locale,
+                    implode(',', $ids)
+                ));
+            } catch (MissingStoreviewException $e) {
+                $output->writeln(sprintf('  <error>✗ %s — %s</error>', $locale, $e->getMessage()));
+                $allOk = false;
+            }
+        }
+        return $allOk;
+    }
+
+    /**
+     * @param array<int, string> $locales
+     */
+    private function signalDeployContext(InputInterface $input, ThemeInterface $theme, array $locales): void
+    {
+        if ($this->magentoRegistry->registry('disrex_sample_data_theme_context') === null) {
+            $this->magentoRegistry->register('disrex_sample_data_theme_context', [
+                'theme' => $theme->getCode(),
+                'locales' => $locales,
+                'skip_media' => (bool) $input->getOption(self::OPT_SKIP_MEDIA),
+                'force' => (bool) $input->getOption(self::OPT_FORCE),
+            ]);
+        }
+    }
+
+    private function prepareEnvironment(): void
+    {
+        try {
+            $this->appState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
+        } catch (\Magento\Framework\Exception\LocalizedException) {
+            // Area already set.
+        }
+    }
+
+    private function summarize(\Disrex\SampleDataThemesCore\Model\RunResult $result, OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln(sprintf(
+            '<info>Done.</info> %d ok, %d failed.',
+            count($result->getSuccesses()),
+            count($result->getFailures())
+        ));
+        if (!$result->isSuccessful()) {
+            $output->writeln('<error>Failures:</error>');
+            foreach ($result->getFailures() as $failure) {
+                $output->writeln(sprintf('  - %s: %s', $failure['class'], $failure['message']));
+            }
+        }
+    }
+}

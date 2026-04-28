@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<ruleset name="DisrexSampleDataThemes">
+    <description>PSR-12 with a few project-local tweaks.</description>
+
+    <file>packages/core</file>
+    <exclude-pattern>packages/core/Test/Unit/Helper/Fixture/fixtures/*</exclude-pattern>
+    <!-- Stub interface declarations are intentionally bundled into one file. -->
+    <exclude-pattern>packages/core/Test/Unit/stubs/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="p"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- Magento module bootstrap files use side effects intentionally. -->
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>*/registration.php</exclude-pattern>
+    </rule>
+</ruleset>

@@ -1,0 +1,354 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Disrex\SampleDataThemesCore\Helper\Fixture;
+
+use Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+use Magento\Catalog\Model\Product;
+use Magento\Eav\Model\Config as EavConfig;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Psr\Log\LoggerInterface;
+
+/**
+ * Creates / updates EAV product attributes and their swatch options. The
+ * importer works against the existing EAV machinery rather than writing to
+ * `eav_attribute*` tables directly, so it stays compatible with future
+ * Magento changes.
+ *
+ * Attribute payloads use the wide CSV format from the spec:
+ *
+ *   attribute_code, frontend_input, is_required, is_searchable,
+ *   is_filterable, is_visible_on_front, used_in_product_listing, is_global,
+ *   option_codes
+ *
+ * The `option_codes` column carries `code|code|code` for plain selects, or
+ * `code:#hex|code:#hex` for visual swatches.
+ */
+class AttributeImporter
+{
+    private const ENTITY_TYPE = Product::ENTITY;
+
+    public function __construct(
+        private readonly ProductAttributeRepositoryInterface $attributeRepository,
+        private readonly ProductAttributeInterfaceFactory $attributeFactory,
+        private readonly EavConfig $eavConfig,
+        private readonly LoggerInterface $logger
+    ) {
+    }
+
+    /**
+     * Create or update an attribute from a parsed base-CSV row.
+     *
+     * @param array<string, string> $row
+     */
+    public function createOrUpdate(array $row): void
+    {
+        $code = $this->require($row, 'attribute_code');
+        $frontendInput = $row['frontend_input'] ?? 'text';
+
+        try {
+            $attribute = $this->attributeRepository->get($code);
+        } catch (NoSuchEntityException) {
+            $attribute = $this->attributeFactory->create();
+            $attribute->setAttributeCode($code);
+            $attribute->setEntityTypeId($this->getEntityTypeId());
+        }
+
+        $attribute->setFrontendInput($this->mapFrontendInput($frontendInput));
+        $attribute->setBackendType($this->resolveBackendType($frontendInput));
+        $attribute->setIsUserDefined(true);
+        $attribute->setFrontendLabel(['Label']); // placeholder; per-store labels set via translations
+        $attribute->setIsRequired($this->bool($row, 'is_required'));
+        $attribute->setIsSearchable($this->bool($row, 'is_searchable'));
+        $attribute->setIsFilterable((int) ($row['is_filterable'] ?? 0));
+        $attribute->setIsVisibleOnFront($this->bool($row, 'is_visible_on_front'));
+        $attribute->setUsedInProductListing($this->bool($row, 'used_in_product_listing'));
+        $attribute->setIsGlobal((int) ($row['is_global'] ?? 1));
+        $attribute->setIsVisible(true);
+        $attribute->setIsUnique(false);
+
+        $options = $this->parseOptionCodes($row['option_codes'] ?? '');
+        if ($options !== []) {
+            $attribute->setData('option', [
+                'value' => $this->buildAdminOptionPayload($options),
+                'order' => $this->buildOrderPayload($options),
+                'delete' => [],
+            ]);
+            if ($frontendInput === 'swatch_visual') {
+                $attribute->setData('swatch_input_type', 'visual');
+                $attribute->setData('swatchvisual', [
+                    'value' => $this->buildVisualSwatchPayload($options),
+                ]);
+                $attribute->setData('optionvisual', [
+                    'value' => $this->buildAdminOptionPayload($options),
+                ]);
+            } elseif ($frontendInput === 'swatch_text') {
+                $attribute->setData('swatch_input_type', 'text');
+                $attribute->setData('swatchtext', [
+                    'value' => $this->buildTextSwatchPayload($options),
+                ]);
+                $attribute->setData('optiontext', [
+                    'value' => $this->buildAdminOptionPayload($options),
+                ]);
+            }
+        }
+
+        $this->attributeRepository->save($attribute);
+    }
+
+    /**
+     * Apply per-store labels for an attribute and its options. Pass the
+     * full set of rows from a single locale's `attributes.csv`.
+     *
+     * @param array<int, array<string, string>> $rows
+     * @param array<int, int> $storeIds
+     */
+    public function applyTranslations(array $rows, array $storeIds): void
+    {
+        if ($storeIds === []) {
+            return;
+        }
+
+        // Group rows by attribute_code: one row per option, plus first row's
+        // frontend_label is used as the attribute label.
+        $byCode = [];
+        foreach ($rows as $row) {
+            $code = $row['attribute_code'] ?? '';
+            if ($code === '') {
+                continue;
+            }
+            $byCode[$code][] = $row;
+        }
+
+        foreach ($byCode as $code => $codeRows) {
+            try {
+                $attribute = $this->attributeRepository->get($code);
+            } catch (NoSuchEntityException $e) {
+                $this->logger->warning(sprintf(
+                    '[disrex/sample-data-themes] Attribute "%s" not found while applying translations.',
+                    $code
+                ));
+                continue;
+            }
+
+            $label = $codeRows[0]['frontend_label'] ?? '';
+            if ($label !== '') {
+                $storeLabels = $attribute->getStoreLabels() ?: [];
+                foreach ($storeIds as $storeId) {
+                    $storeLabels[$storeId] = $label;
+                }
+                $attribute->setStoreLabels($storeLabels);
+            }
+
+            $optionLabels = [];
+            foreach ($codeRows as $row) {
+                $optionCode = $row['option_code'] ?? '';
+                $optionLabel = $row['option_label'] ?? '';
+                if ($optionCode === '' || $optionLabel === '') {
+                    continue;
+                }
+                $optionLabels[$optionCode] = $optionLabel;
+            }
+
+            if ($optionLabels !== []) {
+                $this->applyOptionLabels($attribute, $optionLabels, $storeIds);
+            }
+
+            $this->attributeRepository->save($attribute);
+        }
+    }
+
+    /**
+     * Resolve an option code to its option ID for a given attribute.
+     *
+     * @return int|null Null if the attribute or option does not exist.
+     */
+    public function resolveOptionId(string $attributeCode, string $optionCode): ?int
+    {
+        try {
+            $attribute = $this->eavConfig->getAttribute(self::ENTITY_TYPE, $attributeCode);
+        } catch (\Throwable) {
+            return null;
+        }
+        if (!$attribute || !$attribute->getId()) {
+            return null;
+        }
+        $source = $attribute->getSource();
+        if (!$source) {
+            return null;
+        }
+        foreach ($source->getAllOptions(false) as $option) {
+            $valueAdmin = $option['value_admin'] ?? null;
+            $label = $option['label'] ?? null;
+            if ($valueAdmin === $optionCode || $label === $optionCode) {
+                return (int) $option['value'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param array<string, string> $optionCodeToLabel
+     * @param array<int, int> $storeIds
+     */
+    private function applyOptionLabels($attribute, array $optionCodeToLabel, array $storeIds): void
+    {
+        // Reading the attribute's options requires the source model. For
+        // theme imports we treat the admin label as the option's stable
+        // identifier (the spec uses `code` style identifiers, so the admin
+        // label *is* the code).
+        $source = $attribute->getSource();
+        if (!$source) {
+            return;
+        }
+        $options = $source->getAllOptions(false);
+
+        $payload = [];
+        foreach ($options as $option) {
+            $optionId = $option['value'] ?? null;
+            $adminLabel = $option['label'] ?? null;
+            if ($optionId === null || $adminLabel === null) {
+                continue;
+            }
+            if (!isset($optionCodeToLabel[$adminLabel])) {
+                continue;
+            }
+            foreach ($storeIds as $storeId) {
+                $payload[$optionId][$storeId] = $optionCodeToLabel[$adminLabel];
+            }
+            // Preserve the admin (store 0) label.
+            $payload[$optionId][0] = $adminLabel;
+        }
+
+        if ($payload !== []) {
+            $existing = $attribute->getData('option') ?: [];
+            $existing['value'] = ($existing['value'] ?? []) + $payload;
+            $attribute->setData('option', $existing);
+        }
+    }
+
+    /**
+     * @param array<string, string> $row
+     */
+    private function require(array $row, string $key): string
+    {
+        if (!isset($row[$key]) || $row[$key] === '') {
+            throw new \InvalidArgumentException(sprintf('Required column "%s" is empty.', $key));
+        }
+        return $row[$key];
+    }
+
+    /**
+     * @param array<string, string> $row
+     */
+    private function bool(array $row, string $key): int
+    {
+        $value = $row[$key] ?? '0';
+        return ((int) $value === 1 || strtolower($value) === 'true') ? 1 : 0;
+    }
+
+    private function mapFrontendInput(string $input): string
+    {
+        return match ($input) {
+            'swatch_visual', 'swatch_text' => 'select',
+            default => $input,
+        };
+    }
+
+    private function resolveBackendType(string $frontendInput): string
+    {
+        return match ($frontendInput) {
+            'select', 'swatch_visual', 'swatch_text' => 'int',
+            'multiselect' => 'varchar',
+            'price', 'weight' => 'decimal',
+            'date' => 'datetime',
+            'textarea' => 'text',
+            default => 'varchar',
+        };
+    }
+
+    /**
+     * @return array<int, array{code: string, hex?: string}>
+     */
+    private function parseOptionCodes(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+        $options = [];
+        foreach (explode('|', $raw) as $entry) {
+            $entry = trim($entry);
+            if ($entry === '') {
+                continue;
+            }
+            if (str_contains($entry, ':')) {
+                [$code, $hex] = explode(':', $entry, 2);
+                $options[] = ['code' => trim($code), 'hex' => trim($hex)];
+            } else {
+                $options[] = ['code' => $entry];
+            }
+        }
+        return $options;
+    }
+
+    /**
+     * @param array<int, array{code: string, hex?: string}> $options
+     * @return array<string, array<int, string>>
+     */
+    private function buildAdminOptionPayload(array $options): array
+    {
+        $payload = [];
+        foreach ($options as $i => $opt) {
+            $key = 'option_' . $i;
+            $payload[$key] = [0 => $opt['code']];
+        }
+        return $payload;
+    }
+
+    /**
+     * @param array<int, array{code: string, hex?: string}> $options
+     * @return array<string, int>
+     */
+    private function buildOrderPayload(array $options): array
+    {
+        $payload = [];
+        foreach ($options as $i => $_) {
+            $payload['option_' . $i] = $i * 10;
+        }
+        return $payload;
+    }
+
+    /**
+     * @param array<int, array{code: string, hex?: string}> $options
+     * @return array<string, string>
+     */
+    private function buildVisualSwatchPayload(array $options): array
+    {
+        $payload = [];
+        foreach ($options as $i => $opt) {
+            $payload['option_' . $i] = $opt['hex'] ?? '#cccccc';
+        }
+        return $payload;
+    }
+
+    /**
+     * @param array<int, array{code: string, hex?: string}> $options
+     * @return array<string, string>
+     */
+    private function buildTextSwatchPayload(array $options): array
+    {
+        $payload = [];
+        foreach ($options as $i => $opt) {
+            $payload['option_' . $i] = $opt['code'];
+        }
+        return $payload;
+    }
+
+    private function getEntityTypeId(): int
+    {
+        return (int) $this->eavConfig->getEntityType(self::ENTITY_TYPE)->getId();
+    }
+}
