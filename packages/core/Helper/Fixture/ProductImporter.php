@@ -334,16 +334,30 @@ class ProductImporter
             return;
         }
 
-        $existingFilenames = [];
+        // Magento's gallery storage appends `_1`, `_2` etc. when a file with
+        // the same dispersion-path basename already exists, so the basename
+        // we wrote yesterday isn't necessarily the basename in the DB today.
+        // To stay idempotent across re-runs we strip Magento's numeric
+        // suffix before comparing — the *stem* (e.g. `sofa-helsinki-001`)
+        // is what the CSV declares; suffixes are just storage artifacts.
+        $existingStems = [];
         foreach ((array) $product->getMediaGalleryEntries() as $existing) {
             /** @var ProductAttributeMediaGalleryEntryInterface $existing */
-            $existingFilenames[basename((string) $existing->getFile())] = true;
+            $file = (string) $existing->getFile();
+            if ($file === '') {
+                continue;
+            }
+            $stem = pathinfo($file, PATHINFO_FILENAME);
+            // Strip Magento's `_N` storage suffix if present.
+            $stem = preg_replace('/_\d+$/', '', $stem);
+            $existingStems[$stem] = true;
         }
 
         $position = 0;
         $isFirst = true;
         foreach ($filenames as $filename) {
-            if (isset($existingFilenames[$filename])) {
+            $candidateStem = pathinfo($filename, PATHINFO_FILENAME);
+            if (isset($existingStems[$candidateStem])) {
                 // Idempotent re-run: skip already-attached images.
                 $isFirst = false;
                 continue;
@@ -396,6 +410,11 @@ class ProductImporter
     /**
      * Search known module paths for a media file. Returns the absolute
      * path to the first hit, or null if nothing matched.
+     *
+     * Each module is checked under both `_files/images/` (studio shots) and
+     * `_files/scenes/` (lifestyle / scene shots). Themes that prefer a flat
+     * layout can ignore the second directory; themes that separate by stage
+     * keep their semantic structure.
      */
     private function locateImageFile(string $filename): ?string
     {
@@ -405,6 +424,7 @@ class ProductImporter
             // Tier-2: theme module fallback (low-res placeholders).
             'Disrex_SampleDataThemeHomeLiving',
         ];
+        $subdirs = ['images', 'scenes'];
 
         foreach ($searchModules as $moduleName) {
             try {
@@ -412,9 +432,11 @@ class ProductImporter
             } catch (\Throwable) {
                 continue;
             }
-            $candidate = rtrim($base, '/') . '/_files/images/' . ltrim($filename, '/');
-            if (is_readable($candidate)) {
-                return $candidate;
+            foreach ($subdirs as $subdir) {
+                $candidate = rtrim($base, '/') . '/_files/' . $subdir . '/' . ltrim($filename, '/');
+                if (is_readable($candidate)) {
+                    return $candidate;
+                }
             }
         }
         return null;

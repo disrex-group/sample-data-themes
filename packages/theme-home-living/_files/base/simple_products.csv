@@ -1,19 +1,19 @@
 sku,attribute_set,price,qty,visibility,status,categories,material,style,room,dimensions,weight_capacity,weight,images
-DRX-HL-CT-001,furniture,249.00,50,4,1,living-room/coffee-tables,wood,scandinavian,living,"120 x 60 x 45 cm",,18.5,coffee-table-oslo-001.jpg
-DRX-HL-CT-002,furniture,299.00,40,4,1,living-room/coffee-tables,wood,mid-century,living,"110 x 55 x 40 cm",,16.0,coffee-table-bergen-001.jpg
-DRX-HL-CT-003,furniture,189.00,60,4,1,living-room/coffee-tables,glass,modern,living,"100 x 60 x 45 cm",,12.0,coffee-table-tromso-001.jpg
-DRX-HL-NS-001,furniture,129.00,80,4,1,bedroom/nightstands,wood,scandinavian,bedroom,"45 x 40 x 55 cm",,7.5,nightstand-malmo-001.jpg
-DRX-HL-NS-002,furniture,149.00,70,4,1,bedroom/nightstands,wood,modern,bedroom,"50 x 40 x 60 cm",,8.0,nightstand-lund-001.jpg
-DRX-HL-WAR-001,furniture,799.00,15,4,1,bedroom/wardrobes,wood,scandinavian,bedroom,"180 x 60 x 200 cm",,72.0,wardrobe-goteborg-001.jpg
-DRX-HL-BED-001,furniture,649.00,20,4,1,bedroom/beds,wood,scandinavian,bedroom,"160 x 200 cm",Max. 200 kg,55.0,bed-stockholm-001.jpg
-DRX-HL-DT-001,furniture,799.00,18,4,1,dining/dining-tables,wood,scandinavian,dining,"180 x 90 x 75 cm",,42.0,dining-table-reykjavik-001.jpg
-DRX-HL-DC-001,furniture,99.00,150,4,1,dining/dining-chairs,wood,scandinavian,dining,"45 x 50 x 85 cm",Max. 130 kg,5.5,dining-chair-helsinki-001.jpg
-DRX-HL-PL-001,lighting,189.00,50,4,1,lighting/pendant-lights,metal,industrial,"living,dining","40 cm diameter",,2.5,pendant-light-espoo-001.jpg
-DRX-HL-FL-001,lighting,89.00,75,4,1,lighting/floor-lamps,metal,scandinavian,"living,bedroom","160 cm height",,4.2,floor-lamp-stockholm-001.jpg
-DRX-HL-FL-002,lighting,229.00,30,4,1,lighting/floor-lamps,metal,industrial,living,"170 cm height",,6.0,floor-lamp-trondheim-001.jpg
-DRX-HL-TL-001,lighting,69.00,100,4,1,lighting/table-lamps,ceramic,modern,"living,bedroom","35 cm height",,1.8,table-lamp-bergen-001.jpg
-DRX-HL-VAS-001,decor,29.95,200,4,1,decor/vases,ceramic,scandinavian,living,"25 cm height",,0.9,vase-copenhagen-001.jpg
-DRX-HL-VAS-002,decor,39.95,180,4,1,decor/vases,glass,modern,"living,dining","30 cm height",,1.2,vase-tampere-001.jpg
-DRX-HL-MIR-001,decor,159.00,40,4,1,decor/mirrors,metal,modern,"living,bedroom","60 x 90 cm",,4.5,mirror-aalborg-001.jpg
-DRX-HL-WA-001,decor,79.00,60,4,1,decor/wall-art,wood,scandinavian,living,"30 x 40 cm",,1.0,wall-art-trio-001.jpg
-DRX-HL-OL-001,lighting,119.00,45,4,1,outdoor/outdoor-lighting,metal,modern,outdoor,"180 cm height",,5.0,outdoor-lamp-skagen-001.jpg
+DRX-HL-CT-001,furniture,249.00,50,4,1,living-room/coffee-tables,wood,scandinavian,living,"120 x 60 x 45 cm",,18.5,"coffee-table-oslo-001.jpg,coffee-table-oslo-scene-detail-002.jpg,coffee-table-oslo-scene-living-001.jpg"
+DRX-HL-CT-002,furniture,299.00,40,4,1,living-room/coffee-tables,wood,mid-century,living,"110 x 55 x 40 cm",,16.0,"coffee-table-bergen-001.jpg,coffee-table-bergen-scene-detail-002.jpg,coffee-table-bergen-scene-living-001.jpg"
+DRX-HL-CT-003,furniture,189.00,60,4,1,living-room/coffee-tables,glass,modern,living,"100 x 60 x 45 cm",,12.0,"coffee-table-tromso-001.jpg,coffee-table-tromso-scene-detail-002.jpg,coffee-table-tromso-scene-living-001.jpg"
+DRX-HL-NS-001,furniture,129.00,80,4,1,bedroom/nightstands,wood,scandinavian,bedroom,"45 x 40 x 55 cm",,7.5,"nightstand-malmo-001.jpg,nightstand-malmo-scene-bedroom-001.jpg,nightstand-malmo-scene-detail-002.jpg"
+DRX-HL-NS-002,furniture,149.00,70,4,1,bedroom/nightstands,wood,modern,bedroom,"50 x 40 x 60 cm",,8.0,"nightstand-lund-001.jpg,nightstand-lund-scene-bedroom-001.jpg,nightstand-lund-scene-detail-002.jpg"
+DRX-HL-WAR-001,furniture,799.00,15,4,1,bedroom/wardrobes,wood,scandinavian,bedroom,"180 x 60 x 200 cm",,72.0,"wardrobe-goteborg-001.jpg,wardrobe-goteborg-scene-bedroom-001.jpg,wardrobe-goteborg-scene-detail-002.jpg"
+DRX-HL-BED-001,furniture,649.00,20,4,1,bedroom/beds,wood,scandinavian,bedroom,"160 x 200 cm","Max. 200 kg",55.0,"bed-stockholm-001.jpg,bed-stockholm-scene-bedroom-001.jpg,bed-stockholm-scene-detail-002.jpg"
+DRX-HL-DT-001,furniture,799.00,18,4,1,dining/dining-tables,wood,scandinavian,dining,"180 x 90 x 75 cm",,42.0,"dining-table-reykjavik-001.jpg,dining-table-reykjavik-scene-detail-002.jpg,dining-table-reykjavik-scene-dining-001.jpg"
+DRX-HL-DC-001,furniture,99.00,150,4,1,dining/dining-chairs,wood,scandinavian,dining,"45 x 50 x 85 cm","Max. 130 kg",5.5,"dining-chair-helsinki-001.jpg,dining-chair-helsinki-scene-detail-002.jpg,dining-chair-helsinki-scene-dining-001.jpg"
+DRX-HL-PL-001,lighting,189.00,50,4,1,lighting/pendant-lights,metal,industrial,"living,dining","40 cm diameter",,2.5,"pendant-light-espoo-001.jpg,pendant-light-espoo-scene-detail-002.jpg,pendant-light-espoo-scene-dining-001.jpg"
+DRX-HL-FL-001,lighting,89.00,75,4,1,lighting/floor-lamps,metal,scandinavian,"living,bedroom","160 cm height",,4.2,"floor-lamp-stockholm-001.jpg,floor-lamp-stockholm-scene-detail-002.jpg,floor-lamp-stockholm-scene-living-001.jpg"
+DRX-HL-FL-002,lighting,229.00,30,4,1,lighting/floor-lamps,metal,industrial,living,"170 cm height",,6.0,"floor-lamp-trondheim-001.jpg,floor-lamp-trondheim-scene-detail-002.jpg,floor-lamp-trondheim-scene-living-001.jpg"
+DRX-HL-TL-001,lighting,69.00,100,4,1,lighting/table-lamps,ceramic,modern,"living,bedroom","35 cm height",,1.8,"table-lamp-bergen-001.jpg,table-lamp-bergen-scene-bedroom-001.jpg,table-lamp-bergen-scene-detail-002.jpg"
+DRX-HL-VAS-001,decor,29.95,200,4,1,decor/vases,ceramic,scandinavian,living,"25 cm height",,0.9,"vase-copenhagen-001.jpg,vase-copenhagen-scene-detail-002.jpg,vase-copenhagen-scene-living-001.jpg"
+DRX-HL-VAS-002,decor,39.95,180,4,1,decor/vases,glass,modern,"living,dining","30 cm height",,1.2,"vase-tampere-001.jpg,vase-tampere-scene-detail-002.jpg,vase-tampere-scene-living-001.jpg"
+DRX-HL-MIR-001,decor,159.00,40,4,1,decor/mirrors,metal,modern,"living,bedroom","60 x 90 cm",,4.5,"mirror-aalborg-001.jpg,mirror-aalborg-scene-bedroom-002.jpg,mirror-aalborg-scene-hallway-001.jpg"
+DRX-HL-WA-001,decor,79.00,60,4,1,decor/wall-art,wood,scandinavian,living,"30 x 40 cm",,1.0,"wall-art-trio-001.jpg,wall-art-trio-scene-detail-002.jpg,wall-art-trio-scene-living-001.jpg"
+DRX-HL-OL-001,lighting,119.00,45,4,1,outdoor/outdoor-lighting,metal,modern,outdoor,"180 cm height",,5.0,"outdoor-lamp-skagen-001.jpg,outdoor-lamp-skagen-scene-detail-002.jpg,outdoor-lamp-skagen-scene-garden-001.jpg"
