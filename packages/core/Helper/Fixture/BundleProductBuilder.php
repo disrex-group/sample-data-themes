@@ -8,6 +8,7 @@ use Magento\Bundle\Api\Data\LinkInterfaceFactory;
 use Magento\Bundle\Api\Data\OptionInterfaceFactory;
 use Magento\Bundle\Api\ProductLinkManagementInterface;
 use Magento\Bundle\Api\ProductOptionManagementInterface;
+use Magento\Bundle\Api\ProductOptionRepositoryInterface;
 use Magento\Bundle\Model\Product\Type as BundleType;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -26,6 +27,7 @@ class BundleProductBuilder
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly ProductOptionManagementInterface $optionManagement,
+        private readonly ProductOptionRepositoryInterface $optionRepository,
         private readonly ProductLinkManagementInterface $linkManagement,
         private readonly OptionInterfaceFactory $optionFactory,
         private readonly LinkInterfaceFactory $linkFactory,
@@ -64,8 +66,10 @@ class BundleProductBuilder
         $this->productRepository->save($parent);
 
         // Remove existing options to keep the import idempotent.
-        foreach ($this->optionManagement->getList($parentSku) as $existing) {
-            $this->optionManagement->remove($parentSku, (int) $existing->getOptionId());
+        // Bundle option listing/deletion live on the repository interface,
+        // not on OptionManagement (which only declares save()).
+        foreach ($this->optionRepository->getList($parentSku) as $existing) {
+            $this->optionRepository->deleteById($parentSku, (int) $existing->getOptionId());
         }
 
         foreach ($options as $position => $optionData) {
@@ -76,7 +80,7 @@ class BundleProductBuilder
             $option->setPosition((int) ($optionData['position'] ?? $position));
             $option->setSku($parentSku);
 
-            $optionId = $this->optionManagement->save($parentSku, $option);
+            $optionId = $this->optionManagement->save($option);
 
             foreach ($optionData['selections'] as $selectionPosition => $sel) {
                 $selectionSku = trim((string) ($sel['sku'] ?? ''));
