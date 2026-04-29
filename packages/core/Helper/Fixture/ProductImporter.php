@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Disrex\SampleDataThemesCore\Helper\Fixture;
 
+use Magento\Catalog\Api\Data\ProductAttributeMediaGalleryEntryInterface;
+use Magento\Catalog\Api\Data\ProductAttributeMediaGalleryEntryInterfaceFactory;
 use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\Data\ProductInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeMediaGalleryManagementInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\Product\Type as ProductType;
@@ -13,8 +16,12 @@ use Magento\Catalog\Model\Product\Visibility;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Eav\Api\AttributeSetRepositoryInterface;
 use Magento\Eav\Api\Data\AttributeSetInterface;
+use Magento\Framework\Api\Data\ImageContentInterface;
+use Magento\Framework\Api\Data\ImageContentInterfaceFactory;
 use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Module\Dir\Reader as ModuleDirReader;
 use Magento\Store\Model\Store;
 use Psr\Log\LoggerInterface;
 
@@ -46,6 +53,11 @@ class ProductImporter
         private readonly StockRegistryInterface $stockRegistry,
         private readonly CategoryImporter $categoryImporter,
         private readonly AttributeImporter $attributeImporter,
+        private readonly ResourceConnection $resourceConnection,
+        private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
+        private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
+        private readonly ImageContentInterfaceFactory $imageContentFactory,
+        private readonly ModuleDirReader $moduleDirReader,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -76,9 +88,13 @@ class ProductImporter
         $product->setStatus((int) ($row['status'] ?? 1));
         $product->setWebsiteIds($this->resolveWebsiteIds($row));
 
-        if (isset($row['price']) && $row['price'] !== '') {
-            $product->setPrice((float) $row['price']);
-        }
+        // Magento marks `price` as a required attribute on the catalog
+        // entity. Grouped products (and bundle parents in dynamic-price
+        // mode) carry no price in the source CSV, so default to 0.0 to
+        // satisfy the validator. Magento computes the displayed price for
+        // those types from their associated children at render time.
+        $rawPrice = $row['price'] ?? '';
+        $product->setPrice($rawPrice !== '' ? (float) $rawPrice : 0.0);
         if (isset($row['weight']) && $row['weight'] !== '') {
             $product->setWeight((float) $row['weight']);
         }
@@ -99,6 +115,10 @@ class ProductImporter
         $product = $this->productRepository->save($product);
 
         $this->applyStock($product, $row);
+
+        if (!empty($row['images'])) {
+            $this->attachImages($product, $row['images']);
+        }
 
         return $product;
     }
@@ -149,6 +169,42 @@ class ProductImporter
         }
     }
 
+    /**
+     * Purge URL rewrites whose target product no longer exists. Magento does
+     * not always cascade these rows when products are deleted, so a re-run
+     * of an import (or partial cleanup between runs) can leave orphaned
+     * rewrites that block fresh inserts with "URL key for specified store
+     * already exists." This call is safe to invoke before any product save
+     * and only touches truly orphaned rows.
+     */
+    public function cleanOrphanProductUrlRewrites(): int
+    {
+        $connection = $this->resourceConnection->getConnection();
+        $urlRewrite = $this->resourceConnection->getTableName('url_rewrite');
+        $catalogProduct = $this->resourceConnection->getTableName('catalog_product_entity');
+
+        $select = $connection->select()
+            ->from(['ur' => $urlRewrite], ['url_rewrite_id'])
+            ->joinLeft(
+                ['cpe' => $catalogProduct],
+                'ur.entity_id = cpe.entity_id',
+                []
+            )
+            ->where('ur.entity_type = ?', 'product')
+            ->where('cpe.entity_id IS NULL');
+
+        $orphanIds = $connection->fetchCol($select);
+        if ($orphanIds === []) {
+            return 0;
+        }
+
+        $connection->delete(
+            $urlRewrite,
+            ['url_rewrite_id IN (?)' => $orphanIds]
+        );
+        return count($orphanIds);
+    }
+
     public function resolveAttributeSetId(string $name): int
     {
         if (isset($this->attributeSetCache[$name])) {
@@ -192,6 +248,10 @@ class ProductImporter
             'sku', 'type_id', 'attribute_set', 'price', 'weight', 'qty', 'visibility', 'status',
             'categories', 'images', 'website_ids', 'name', 'description', 'short_description',
             'url_key', 'meta_title', 'meta_description', 'meta_keyword', 'meta_keywords',
+            // Configurable variations carry these but they are not product
+            // attributes — they describe the parent / variant relationship
+            // and the configurable axis declaration.
+            'parent_sku', 'child_sku', 'configurable_attributes', 'associated_skus', 'options',
         ];
 
         foreach ($row as $key => $value) {
@@ -203,7 +263,13 @@ class ProductImporter
             }
 
             $resolved = $this->resolveAttributeValue($key, $value);
-            $product->setCustomAttribute($key, $resolved);
+            // Use setData() rather than setCustomAttribute() — setCustom­Attribute
+            // wraps the value in an AttributeInterface object via a factory
+            // and the resulting structure is not always picked up by the EAV
+            // entity backend. setData() places the value directly on the
+            // product, which Magento's catalog save handlers persist into
+            // the right backend column.
+            $product->setData($key, $resolved);
         }
     }
 
@@ -244,6 +310,125 @@ class ProductImporter
         $stockItem->setIsInStock($qty > 0);
         $stockItem->setUseConfigManageStock(true);
         $this->stockRegistry->updateStockItemBySku($product->getSku(), $stockItem);
+    }
+
+    /**
+     * Attach images to a product. The `images` column is a comma-separated
+     * list of filenames (no path) that the importer will resolve against
+     * the configured search paths in this order:
+     *
+     *   1. Disrex_SampleDataThemeHomeLivingMedia _files/images/  (high-res
+     *      catalogue assets, optional package — present only on demo
+     *      installs).
+     *   2. Disrex_SampleDataThemeHomeLiving _files/images/        (low-res
+     *      placeholders shipped with the theme module itself).
+     *
+     * If neither location resolves, the row is logged and the product is
+     * left without that particular image — partial galleries beat hard
+     * fails on demo installs missing the optional media bundle.
+     */
+    private function attachImages(ProductInterface $product, string $imagesColumn): void
+    {
+        $filenames = array_filter(array_map('trim', explode(',', $imagesColumn)));
+        if ($filenames === []) {
+            return;
+        }
+
+        $existingFilenames = [];
+        foreach ((array) $product->getMediaGalleryEntries() as $existing) {
+            /** @var ProductAttributeMediaGalleryEntryInterface $existing */
+            $existingFilenames[basename((string) $existing->getFile())] = true;
+        }
+
+        $position = 0;
+        $isFirst = true;
+        foreach ($filenames as $filename) {
+            if (isset($existingFilenames[$filename])) {
+                // Idempotent re-run: skip already-attached images.
+                $isFirst = false;
+                continue;
+            }
+
+            $absolutePath = $this->locateImageFile($filename);
+            if ($absolutePath === null) {
+                $this->logger->warning(sprintf(
+                    '[disrex/sample-data-themes] Image %s for SKU %s not found in any configured media path; skipped.',
+                    $filename,
+                    $product->getSku()
+                ));
+                continue;
+            }
+
+            try {
+                $bytes = file_get_contents($absolutePath);
+                if ($bytes === false) {
+                    continue;
+                }
+
+                $imageContent = $this->imageContentFactory->create();
+                $imageContent->setBase64EncodedData(base64_encode($bytes));
+                $imageContent->setType($this->guessMimeType($absolutePath));
+                $imageContent->setName($filename);
+
+                $entry = $this->galleryEntryFactory->create();
+                $entry->setMediaType('image');
+                $entry->setLabel(pathinfo($filename, PATHINFO_FILENAME));
+                $entry->setPosition(++$position);
+                $entry->setDisabled(false);
+                // The first image becomes the product's main image, small
+                // image, and thumbnail; subsequent ones live in the gallery.
+                $entry->setTypes($isFirst ? ['image', 'small_image', 'thumbnail'] : []);
+                $entry->setContent($imageContent);
+
+                $this->galleryManagement->create($product->getSku(), $entry);
+                $isFirst = false;
+            } catch (\Throwable $e) {
+                $this->logger->warning(sprintf(
+                    '[disrex/sample-data-themes] Failed to attach image %s to SKU %s: %s',
+                    $filename,
+                    $product->getSku(),
+                    $e->getMessage()
+                ), ['exception' => $e]);
+            }
+        }
+    }
+
+    /**
+     * Search known module paths for a media file. Returns the absolute
+     * path to the first hit, or null if nothing matched.
+     */
+    private function locateImageFile(string $filename): ?string
+    {
+        $searchModules = [
+            // Tier-1: media package (high-res, optional).
+            'Disrex_SampleDataThemeHomeLivingMedia',
+            // Tier-2: theme module fallback (low-res placeholders).
+            'Disrex_SampleDataThemeHomeLiving',
+        ];
+
+        foreach ($searchModules as $moduleName) {
+            try {
+                $base = $this->moduleDirReader->getModuleDir('', $moduleName);
+            } catch (\Throwable) {
+                continue;
+            }
+            $candidate = rtrim($base, '/') . '/_files/images/' . ltrim($filename, '/');
+            if (is_readable($candidate)) {
+                return $candidate;
+            }
+        }
+        return null;
+    }
+
+    private function guessMimeType(string $path): string
+    {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        return match ($ext) {
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'image/jpeg',
+        };
     }
 
     /**
