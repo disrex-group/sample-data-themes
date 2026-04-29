@@ -17,7 +17,7 @@ that you have the right to submit the change under the project's licence.
 
 ## Branching and PRs
 
-* Fork, then branch from `main`.
+* Fork, then branch from `master`.
 * One topic per PR. Keep diffs reviewable.
 * Reference an issue if one exists. If not, open one first for non-trivial
   changes so we can agree on the approach before code is written.
