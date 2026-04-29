@@ -8,6 +8,7 @@ use Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory;
 use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
 use Magento\Catalog\Model\Product;
 use Magento\Eav\Model\Config as EavConfig;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Psr\Log\LoggerInterface;
 
@@ -34,6 +35,7 @@ class AttributeImporter
         private readonly ProductAttributeRepositoryInterface $attributeRepository,
         private readonly ProductAttributeInterfaceFactory $attributeFactory,
         private readonly EavConfig $eavConfig,
+        private readonly ResourceConnection $resourceConnection,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -48,9 +50,11 @@ class AttributeImporter
         $code = $this->require($row, 'attribute_code');
         $frontendInput = $row['frontend_input'] ?? 'text';
 
+        $isNew = false;
         try {
             $attribute = $this->attributeRepository->get($code);
         } catch (NoSuchEntityException) {
+            $isNew = true;
             $attribute = $this->attributeFactory->create();
             $attribute->setAttributeCode($code);
             $attribute->setEntityTypeId($this->getEntityTypeId());
@@ -70,7 +74,11 @@ class AttributeImporter
         $attribute->setIsUnique(false);
 
         $options = $this->parseOptionCodes($row['option_codes'] ?? '');
-        if ($options !== []) {
+        // Only seed options when the attribute is new. Re-applying the
+        // option array on every save creates duplicate option rows because
+        // Magento can't distinguish new options from already-persisted ones
+        // when they're keyed positionally (option_0, option_1, …).
+        if ($options !== [] && $isNew) {
             $attribute->setData('option', [
                 'value' => $this->buildAdminOptionPayload($options),
                 'order' => $this->buildOrderPayload($options),
@@ -162,6 +170,9 @@ class AttributeImporter
 
     /**
      * Resolve an option code to its option ID for a given attribute.
+     * Reads from `eav_attribute_option_value` directly to bypass the
+     * source-model option cache, which goes stale during a single import
+     * run when options are created and queried in the same request.
      *
      * @return int|null Null if the attribute or option does not exist.
      */
@@ -175,18 +186,25 @@ class AttributeImporter
         if (!$attribute || !$attribute->getId()) {
             return null;
         }
-        $source = $attribute->getSource();
-        if (!$source) {
-            return null;
-        }
-        foreach ($source->getAllOptions(false) as $option) {
-            $valueAdmin = $option['value_admin'] ?? null;
-            $label = $option['label'] ?? null;
-            if ($valueAdmin === $optionCode || $label === $optionCode) {
-                return (int) $option['value'];
-            }
-        }
-        return null;
+
+        $connection = $this->resourceConnection->getConnection();
+        $optionValueTable = $this->resourceConnection->getTableName('eav_attribute_option_value');
+        $optionTable = $this->resourceConnection->getTableName('eav_attribute_option');
+
+        $select = $connection->select()
+            ->from(['o' => $optionTable], ['option_id'])
+            ->join(
+                ['ov' => $optionValueTable],
+                'o.option_id = ov.option_id',
+                []
+            )
+            ->where('o.attribute_id = ?', (int) $attribute->getId())
+            ->where('ov.store_id = 0')
+            ->where('ov.value = ?', $optionCode)
+            ->limit(1);
+
+        $optionId = $connection->fetchOne($select);
+        return $optionId !== false ? (int) $optionId : null;
     }
 
     /**
@@ -335,14 +353,19 @@ class AttributeImporter
     }
 
     /**
+     * Magento's swatch plugin (Magento\Swatches\Model\Plugin\EavAttribute::
+     * processTextualSwatch) iterates each option's value with reset() so the
+     * payload must be nested per-store: [optionKey => [storeId => label]].
+     * Store id 0 carries the admin/default label.
+     *
      * @param array<int, array{code: string, hex?: string}> $options
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     private function buildTextSwatchPayload(array $options): array
     {
         $payload = [];
         foreach ($options as $i => $opt) {
-            $payload['option_' . $i] = $opt['code'];
+            $payload['option_' . $i] = [0 => $opt['code']];
         }
         return $payload;
     }
