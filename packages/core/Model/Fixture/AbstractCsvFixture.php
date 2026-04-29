@@ -19,6 +19,15 @@ use Psr\Log\LoggerInterface;
  */
 abstract class AbstractCsvFixture implements FixtureInterface
 {
+    /**
+     * Counters from the most recent {@see execute()} run. Subclasses may
+     * read these (or override {@see getLabel()}) to surface row-level
+     * results into the CLI summary.
+     *
+     * @var array{succeeded:int, failed:int}
+     */
+    protected array $rowStats = ['succeeded' => 0, 'failed' => 0];
+
     public function __construct(
         protected readonly CsvParser $csvParser,
         protected readonly ModuleDirReader $moduleReader,
@@ -47,6 +56,8 @@ abstract class AbstractCsvFixture implements FixtureInterface
 
     public function execute(): void
     {
+        $this->rowStats = ['succeeded' => 0, 'failed' => 0];
+
         $path = $this->getFixtureFilePath();
         if (!is_readable($path)) {
             $this->logger->warning(sprintf(
@@ -60,7 +71,9 @@ abstract class AbstractCsvFixture implements FixtureInterface
         foreach ($this->csvParser->parse($path) as $row) {
             try {
                 $this->processRow($row);
+                $this->rowStats['succeeded']++;
             } catch (\Throwable $e) {
+                $this->rowStats['failed']++;
                 $this->logger->warning(sprintf(
                     '[disrex/sample-data-themes] Row failed in %s: %s — %s',
                     static::class,
@@ -69,6 +82,32 @@ abstract class AbstractCsvFixture implements FixtureInterface
                 ), ['exception' => $e]);
             }
         }
+
+        // If every row failed, treat the whole fixture as failed so the
+        // runner shows a red ✗ instead of a green ✓ in the CLI summary.
+        if ($this->rowStats['succeeded'] === 0 && $this->rowStats['failed'] > 0) {
+            throw new \RuntimeException(sprintf(
+                'All %d row(s) failed; see system.log for per-row reasons.',
+                $this->rowStats['failed']
+            ));
+        }
+    }
+
+    /**
+     * Number of CSV rows that processRow() handled without throwing during
+     * the most recent {@see execute()} call.
+     */
+    public function getSucceededRowCount(): int
+    {
+        return $this->rowStats['succeeded'];
+    }
+
+    /**
+     * Number of CSV rows that processRow() rejected with an exception.
+     */
+    public function getFailedRowCount(): int
+    {
+        return $this->rowStats['failed'];
     }
 
     /**

@@ -6,8 +6,11 @@ namespace Disrex\SampleDataThemesCore\Test\Unit\Model;
 
 use Disrex\SampleDataThemesCore\Api\FixtureInterface;
 use Disrex\SampleDataThemesCore\Api\ThemeInterface;
+use Disrex\SampleDataThemesCore\Helper\Fixture\ProductImporter;
 use Disrex\SampleDataThemesCore\Model\FixtureRunner;
 use Disrex\SampleDataThemesCore\Model\RunResult;
+use Magento\Eav\Model\Config as EavConfig;
+use Magento\Framework\App\Cache\TypeListInterface as CacheTypeList;
 use Magento\Framework\ObjectManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -30,7 +33,13 @@ final class FixtureRunnerTest extends TestCase
             ['ClassB', [], $b],
         ]);
 
-        $runner = new FixtureRunner($om, new NullLogger());
+        $runner = new FixtureRunner(
+            $om,
+            new NullLogger(),
+            $this->createMock(EavConfig::class),
+            $this->createMock(CacheTypeList::class),
+            $this->createMock(ProductImporter::class)
+        );
         $theme = $this->makeTheme('t', ['ClassA', 'ClassB']);
 
         $result = $runner->run($theme);
@@ -56,7 +65,13 @@ final class FixtureRunnerTest extends TestCase
             ['ClassB', [], $b],
         ]);
 
-        $runner = new FixtureRunner($om, new NullLogger());
+        $runner = new FixtureRunner(
+            $om,
+            new NullLogger(),
+            $this->createMock(EavConfig::class),
+            $this->createMock(CacheTypeList::class),
+            $this->createMock(ProductImporter::class)
+        );
         $theme = $this->makeTheme('t', ['ClassA', 'ClassB']);
 
         $result = $runner->run($theme);
@@ -84,7 +99,13 @@ final class FixtureRunnerTest extends TestCase
             ['ClassB', [], $b],
         ]);
 
-        $runner = new FixtureRunner($om, new NullLogger());
+        $runner = new FixtureRunner(
+            $om,
+            new NullLogger(),
+            $this->createMock(EavConfig::class),
+            $this->createMock(CacheTypeList::class),
+            $this->createMock(ProductImporter::class)
+        );
         $theme = $this->makeTheme('t', ['ClassA', 'ClassB']);
 
         $runner->rollback($theme);
