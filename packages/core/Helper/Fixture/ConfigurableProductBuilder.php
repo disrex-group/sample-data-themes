@@ -42,9 +42,18 @@ class ConfigurableProductBuilder
             return;
         }
 
+        $children = $this->loadChildren($childSkus);
+        if ($children === []) {
+            $this->logger->warning(sprintf(
+                '[disrex/sample-data-themes] Configurable "%s" has no resolvable children.',
+                $parentSku
+            ));
+            return;
+        }
+
         $parent->setTypeId(ConfigurableType::TYPE_CODE);
 
-        $attributeData = $this->buildAttributeData($configurableAttributeCodes);
+        $attributeData = $this->buildAttributeData($configurableAttributeCodes, $children);
         if ($attributeData === []) {
             $this->logger->warning(sprintf(
                 '[disrex/sample-data-themes] No valid configurable attributes for "%s".',
@@ -57,7 +66,10 @@ class ConfigurableProductBuilder
         $extension = $parent->getExtensionAttributes();
         $extension->setConfigurableProductOptions($configurableOptions);
 
-        $childIds = $this->resolveChildIds($childSkus);
+        $childIds = array_map(
+            static fn ($child) => (int) $child->getId(),
+            $children
+        );
         $extension->setConfigurableProductLinks($childIds);
         $parent->setExtensionAttributes($extension);
 
@@ -66,13 +78,14 @@ class ConfigurableProductBuilder
 
     /**
      * @param array<int, string> $codes
+     * @param array<int, \Magento\Catalog\Api\Data\ProductInterface> $children
      *
      * @return array<int, array{
      *     attribute_id: int, code: string, label: string,
-     *     position: int, values: array<int, mixed>
+     *     position: int, values: array<int, array{value_index: int}>
      * }>
      */
-    private function buildAttributeData(array $codes): array
+    private function buildAttributeData(array $codes, array $children): array
     {
         $data = [];
         foreach ($codes as $position => $code) {
@@ -80,12 +93,30 @@ class ConfigurableProductBuilder
             if (!$attribute || !$attribute->getId()) {
                 continue;
             }
+
+            // Collect distinct option IDs that the children actually use for
+            // this configurable axis. Magento needs these in the
+            // configurable option payload — without them the save fails
+            // with "Option values are not specified".
+            $valueIds = [];
+            foreach ($children as $child) {
+                $optionId = $child->getData($code);
+                if ($optionId !== null && $optionId !== '' && !in_array((int) $optionId, $valueIds, true)) {
+                    $valueIds[] = (int) $optionId;
+                }
+            }
+
+            $values = [];
+            foreach ($valueIds as $valueId) {
+                $values[] = ['value_index' => $valueId];
+            }
+
             $data[] = [
                 'attribute_id' => (int) $attribute->getId(),
                 'code' => $code,
                 'label' => $attribute->getStoreLabel() ?: ucfirst($code),
                 'position' => (int) $position,
-                'values' => [],
+                'values' => $values,
             ];
         }
         return $data;
@@ -93,15 +124,14 @@ class ConfigurableProductBuilder
 
     /**
      * @param array<int, string> $skus
-     * @return array<int, int>
+     * @return array<int, \Magento\Catalog\Api\Data\ProductInterface>
      */
-    private function resolveChildIds(array $skus): array
+    private function loadChildren(array $skus): array
     {
-        $ids = [];
+        $children = [];
         foreach ($skus as $sku) {
             try {
-                $child = $this->productRepository->get(trim($sku));
-                $ids[] = (int) $child->getId();
+                $children[] = $this->productRepository->get(trim($sku));
             } catch (NoSuchEntityException) {
                 $this->logger->warning(sprintf(
                     '[disrex/sample-data-themes] Configurable child "%s" not found, skipped.',
@@ -109,6 +139,6 @@ class ConfigurableProductBuilder
                 ));
             }
         }
-        return $ids;
+        return $children;
     }
 }
