@@ -1,5 +1,5 @@
 name,group,attribute_codes
-furniture,Home & Living,"material,style,room,dimensions,weight_capacity"
+furniture,Home & Living,"material,style,room,dimensions,weight_capacity,color_family,fabric"
 lighting,Home & Living,"material,style,room,dimensions"
 textiles,Home & Living,"material,fabric,color_family,style,room"
 decor,Home & Living,"material,color_family,style,room"
