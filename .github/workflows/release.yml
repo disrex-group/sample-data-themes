@@ -1,0 +1,190 @@
+name: Release
+
+# Tag-driven publishing.
+#
+# Per-package release (recommended):
+#   git tag core/v1.0.0                 -> publishes packages/core
+#   git tag theme-home-living/v1.2.0    -> publishes packages/theme-home-living
+#
+# Whole-monorepo release (every package gets the same tag):
+#   git tag v1.0.0
+#
+# What happens on push:
+#   1. CI gates re-run on the tagged commit (PHPCS, PHPStan, PHPUnit, theme
+#      validator, composer-validate per package).
+#   2. monorepo-split-action mirrors the affected package(s) into their own
+#      read-only repo and pushes the tag.
+#   3. The Packagist GitHub-app integration on each mirror picks up the new
+#      tag automatically and publishes the new version to packagist.org.
+#
+# Required repository secrets (configure under Settings → Secrets):
+#   - DISREX_BOT_TOKEN  GitHub PAT with `repo` scope, able to push to the
+#                       split mirrors. Used by the split action.
+
+on:
+  push:
+    tags:
+      - '*/v[0-9]+.[0-9]+.[0-9]+*'   # per-package: <package>/vX.Y.Z[-suffix]
+      - 'v[0-9]+.[0-9]+.[0-9]+*'     # all-packages: vX.Y.Z[-suffix]
+
+# Concurrency: never run two releases against the same tag in parallel.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: composer validate per package
+        run: |
+          set -e
+          for pkg in packages/*/composer.json; do
+            composer validate --strict --no-check-publish "$pkg"
+          done
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHPCS
+        run: composer cs-check
+
+      - name: PHPStan
+        run: composer analyse
+
+      - name: PHPUnit
+        run: composer test
+
+      - name: Theme validator (home-living)
+        run: php tools/theme-validator.php packages/theme-home-living
+
+  resolve:
+    name: Resolve release scope
+    runs-on: ubuntu-latest
+    needs: gate
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      packages_json: ${{ steps.parse.outputs.packages_json }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse tag
+        id: parse
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          # Tag forms:
+          #   <package-dir>/v1.2.3   -> single package release
+          #   v1.2.3                  -> every package gets this version
+          if [[ "$TAG" == */v* ]]; then
+            pkg="${TAG%/v*}"
+            version="v${TAG#*/v}"
+            if [ ! -d "packages/$pkg" ]; then
+              echo "::error::Tag references unknown package directory: packages/$pkg"
+              exit 1
+            fi
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            jq -nc --arg p "$pkg" '[$p]' > /tmp/packages.json
+          elif [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            version="$TAG"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            ls -1 packages | jq -R -s -c 'split("\n") | map(select(length>0))' > /tmp/packages.json
+          else
+            echo "::error::Tag $TAG does not match expected format"
+            exit 1
+          fi
+          echo "packages_json=$(cat /tmp/packages.json)" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $version"
+          echo "Packages: $(cat /tmp/packages.json)"
+
+  split:
+    name: Split ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.resolve.outputs.packages_json) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # monorepo-split-action needs full history to push a clean subtree.
+          fetch-depth: 0
+
+      - name: Resolve target repository
+        id: target
+        env:
+          PKG: ${{ matrix.package }}
+        run: |
+          # The published mirror repo name matches the composer package name's
+          # final segment. e.g. packages/core            -> sample-data-themes-core
+          #                     packages/theme-home-living -> sample-data-theme-home-living
+          case "$PKG" in
+            core)
+              echo "repo=sample-data-themes-core" >> "$GITHUB_OUTPUT"
+              ;;
+            theme-*)
+              echo "repo=sample-data-$PKG" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unknown package layout for $PKG"
+              exit 1
+              ;;
+          esac
+
+      - name: Split ${{ matrix.package }} -> disrex-group/${{ steps.target.outputs.repo }}@${{ needs.resolve.outputs.version }}
+        uses: danharrin/monorepo-split-github-action@v2.6.0
+        with:
+          tag: ${{ needs.resolve.outputs.version }}
+          package_directory: packages/${{ matrix.package }}
+          repository_organization: disrex-group
+          repository_name: ${{ steps.target.outputs.repo }}
+          user_name: 'disrex-bot'
+          user_email: 'bot@disrex.nl'
+        env:
+          GITHUB_TOKEN: ${{ secrets.DISREX_BOT_TOKEN }}
+
+  notify-packagist:
+    name: Ping Packagist (best-effort)
+    runs-on: ubuntu-latest
+    needs: [resolve, split]
+    if: ${{ vars.PACKAGIST_USERNAME != '' }}
+    steps:
+      - name: Notify Packagist for each released package
+        env:
+          PACKAGIST_USERNAME: ${{ vars.PACKAGIST_USERNAME }}
+          PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
+          PACKAGES_JSON: ${{ needs.resolve.outputs.packages_json }}
+        run: |
+          set -e
+          if [ -z "$PACKAGIST_API_TOKEN" ]; then
+            echo "::warning::PACKAGIST_API_TOKEN not configured; skipping Packagist ping."
+            exit 0
+          fi
+          # If the GitHub-Packagist app is configured, this is redundant. The
+          # explicit ping is here for installs that don't have the app
+          # connected — failures are non-fatal because the canonical update
+          # path is the GitHub webhook.
+          for pkg in $(echo "$PACKAGES_JSON" | jq -r '.[]'); do
+            case "$pkg" in
+              core) name="disrex/sample-data-themes-core" ;;
+              theme-*) name="disrex/sample-data-$pkg" ;;
+              *) continue ;;
+            esac
+            echo "Pinging Packagist: $name"
+            curl -fsS -XPOST \
+              "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_API_TOKEN}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"repository\":{\"url\":\"https://packagist.org/packages/${name}\"}}" || true
+          done

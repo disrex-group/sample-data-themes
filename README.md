@@ -89,3 +89,11 @@ types.
 
 Please read [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions require a
 [DCO](https://developercertificate.org/) sign-off (`git commit -s`) — no CLA.
+
+## Releasing
+
+Each composer package is versioned and published independently. See
+[`RELEASING.md`](RELEASING.md) for the tag conventions
+(`core/v1.0.0`, `theme-home-living/v1.0.0`, ...) and the GitHub Actions
+pipeline that splits this monorepo into per-package mirror repos and
+publishes them on Packagist.

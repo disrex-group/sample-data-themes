@@ -62,3 +62,20 @@ grouped by package.
 - `theme-validator.php` — drift checker that compares each i18n CSV against
   the base layer and reports missing rows (warnings) and extra rows
   (errors). Runs against any theme package; intended for use in CI.
+
+### Build pipeline
+
+#### Added
+
+- CI: `composer validate --strict` runs against every `packages/*/composer.json`
+  before the test matrix.
+- Release workflow (`.github/workflows/release.yml`) — tag-driven monorepo
+  split. Per-package tag (`core/v1.0.0`, `theme-home-living/v1.0.0`, ...)
+  publishes that package; a bare `v1.0.0` tag publishes every package at the
+  same version. Runs the full CI gate first, then mirrors the package
+  directory to its standalone repo via `danharrin/monorepo-split-github-action`.
+  Packagist auto-detects new tags through the GitHub-app integration; an
+  optional explicit API ping is wired up if `PACKAGIST_USERNAME` /
+  `PACKAGIST_API_TOKEN` are configured.
+- `RELEASING.md` documents the full workflow for maintainers (mirror repo
+  setup, secrets, tag formats, yanking a bad release).

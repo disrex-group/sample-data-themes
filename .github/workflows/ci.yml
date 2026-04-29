@@ -7,6 +7,27 @@ on:
     branches: [main]
 
 jobs:
+  validate-packages:
+    name: Validate package composer files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: composer validate per package
+        run: |
+          set -e
+          for pkg in packages/*/composer.json; do
+            echo "== $pkg =="
+            composer validate --strict --no-check-publish "$pkg"
+          done
+
   test:
     name: PHP ${{ matrix.php }} — tests + lint
     runs-on: ubuntu-latest
@@ -38,7 +59,7 @@ jobs:
       - name: PHPCS (PSR-12)
         run: composer cs-check
 
-      - name: PHPStan (level 4 — full level pending Magento autoload in CI)
+      - name: PHPStan
         run: composer analyse
 
       - name: PHPUnit

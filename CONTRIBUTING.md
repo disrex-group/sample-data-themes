@@ -52,3 +52,6 @@ No code changes in `core` are needed.
 
 Maintainers tag releases with semantic versioning. Each package versions
 independently — `core` 1.2 can ship while `theme-home-living` is at 2.4.
+The full process (tag formats, monorepo split, Packagist publishing) is
+documented in [RELEASING.md](RELEASING.md). Contributors don't need to
+read it; maintainers do.
