@@ -1,8 +1,8 @@
 attribute_code,frontend_input,is_required,is_searchable,is_filterable,is_visible_on_front,used_in_product_listing,is_global,option_codes
 material,select,0,1,1,1,1,1,"wood|metal|fabric|leather|glass|ceramic"
-color_family,swatch_visual,0,1,1,1,1,1,"grey:#808080|beige:#D6C9B0|navy:#1B2845|forest:#2D4A36|white:#FFFFFF|black:#000000"
-fabric,swatch_text,0,1,1,1,0,1,"linen|velvet|leather|boucle"
+color_family,swatch_visual,0,1,1,1,1,1,"grey:#808080|beige:#D6C9B0|navy:#1B2845|forest:#2D4A36|white:#FFFFFF|black:#000000|oak:#C4955C|walnut:#5D4037|charcoal:#36454F"
+fabric,swatch_text,0,1,1,1,0,1,"linen|velvet|leather|boucle|woven"
 room,multiselect,0,1,1,1,1,1,"living|bedroom|dining|office|outdoor"
-style,select,0,1,1,1,1,1,"scandinavian|industrial|mid-century|modern|bohemian"
+style,select,0,1,1,1,1,1,"scandinavian|industrial|mid-century|modern|bohemian|japanese|abstract|minimalist"
 dimensions,text,0,0,0,1,0,0,
 weight_capacity,text,0,0,0,1,0,0,

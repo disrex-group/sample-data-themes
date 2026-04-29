@@ -74,32 +74,42 @@ class AttributeImporter
         $attribute->setIsUnique(false);
 
         $options = $this->parseOptionCodes($row['option_codes'] ?? '');
-        // Only seed options when the attribute is new. Re-applying the
-        // option array on every save creates duplicate option rows because
-        // Magento can't distinguish new options from already-persisted ones
-        // when they're keyed positionally (option_0, option_1, …).
-        if ($options !== [] && $isNew) {
-            $attribute->setData('option', [
-                'value' => $this->buildAdminOptionPayload($options),
-                'order' => $this->buildOrderPayload($options),
-                'delete' => [],
-            ]);
-            if ($frontendInput === 'swatch_visual') {
-                $attribute->setData('swatch_input_type', 'visual');
-                $attribute->setData('swatchvisual', [
-                    'value' => $this->buildVisualSwatchPayload($options),
+        if ($options !== []) {
+            if ($isNew) {
+                // Fresh attribute: seed the entire option set in one shot.
+                $optionsToWrite = $options;
+            } else {
+                // Existing attribute: only write codes that aren't already
+                // persisted, so we can grow the option set across deploys
+                // without duplicating rows. (Re-applying the full set
+                // creates duplicates because option_N keys don't carry
+                // identity for already-saved options.)
+                $optionsToWrite = $this->diffNewOptions($attribute->getAttributeCode(), $options);
+            }
+
+            if ($optionsToWrite !== []) {
+                $attribute->setData('option', [
+                    'value' => $this->buildAdminOptionPayload($optionsToWrite),
+                    'order' => $this->buildOrderPayload($optionsToWrite),
+                    'delete' => [],
                 ]);
-                $attribute->setData('optionvisual', [
-                    'value' => $this->buildAdminOptionPayload($options),
-                ]);
-            } elseif ($frontendInput === 'swatch_text') {
-                $attribute->setData('swatch_input_type', 'text');
-                $attribute->setData('swatchtext', [
-                    'value' => $this->buildTextSwatchPayload($options),
-                ]);
-                $attribute->setData('optiontext', [
-                    'value' => $this->buildAdminOptionPayload($options),
-                ]);
+                if ($frontendInput === 'swatch_visual') {
+                    $attribute->setData('swatch_input_type', 'visual');
+                    $attribute->setData('swatchvisual', [
+                        'value' => $this->buildVisualSwatchPayload($optionsToWrite),
+                    ]);
+                    $attribute->setData('optionvisual', [
+                        'value' => $this->buildAdminOptionPayload($optionsToWrite),
+                    ]);
+                } elseif ($frontendInput === 'swatch_text') {
+                    $attribute->setData('swatch_input_type', 'text');
+                    $attribute->setData('swatchtext', [
+                        'value' => $this->buildTextSwatchPayload($optionsToWrite),
+                    ]);
+                    $attribute->setData('optiontext', [
+                        'value' => $this->buildAdminOptionPayload($optionsToWrite),
+                    ]);
+                }
             }
         }
 
@@ -373,5 +383,39 @@ class AttributeImporter
     private function getEntityTypeId(): int
     {
         return (int) $this->eavConfig->getEntityType(self::ENTITY_TYPE)->getId();
+    }
+
+    /**
+     * Filter `$options` down to those whose code is not yet persisted
+     * against `$attributeCode`. Reads `eav_attribute_option_value` directly
+     * because the EAV source-model cache is unreliable mid-import.
+     *
+     * @param array<int, array{code: string, hex?: string}> $options
+     * @return array<int, array{code: string, hex?: string}>
+     */
+    private function diffNewOptions(string $attributeCode, array $options): array
+    {
+        $connection = $this->resourceConnection->getConnection();
+        $optionTable = $this->resourceConnection->getTableName('eav_attribute_option');
+        $optionValueTable = $this->resourceConnection->getTableName('eav_attribute_option_value');
+        $attributeTable = $this->resourceConnection->getTableName('eav_attribute');
+
+        $existingCodes = $connection->fetchCol(
+            $connection->select()
+                ->from(['ov' => $optionValueTable], ['value'])
+                ->join(['o' => $optionTable], 'o.option_id = ov.option_id', [])
+                ->join(['a' => $attributeTable], 'a.attribute_id = o.attribute_id', [])
+                ->where('a.attribute_code = ?', $attributeCode)
+                ->where('ov.store_id = 0')
+        );
+        $existingCodes = array_flip(array_map('strval', $existingCodes));
+
+        $diff = [];
+        foreach ($options as $opt) {
+            if (!isset($existingCodes[(string) $opt['code']])) {
+                $diff[] = $opt;
+            }
+        }
+        return $diff;
     }
 }
