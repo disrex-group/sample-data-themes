@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Disrex\SampleDataThemesCore\Helper\Fixture;
 
+use Magento\Catalog\Api\Data\ProductAttributeMediaGalleryEntryInterfaceFactory;
 use Magento\Catalog\Api\Data\ProductLinkInterface;
 use Magento\Catalog\Api\Data\ProductLinkInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeMediaGalleryManagementInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\Api\Data\ImageContentInterfaceFactory;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Filesystem;
 use Magento\GroupedProduct\Model\Product\Type\Grouped as GroupedType;
 use Psr\Log\LoggerInterface;
 
@@ -17,10 +21,16 @@ use Psr\Log\LoggerInterface;
  */
 class GroupedProductBuilder
 {
+    use InheritsChildImage;
+
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly ProductLinkInterfaceFactory $linkFactory,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
+        private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
+        private readonly ImageContentInterfaceFactory $imageContentFactory,
+        private readonly Filesystem $filesystem
     ) {
     }
 
@@ -76,5 +86,20 @@ class GroupedProductBuilder
 
         $parent->setProductLinks(array_values($existing));
         $this->productRepository->save($parent);
+
+        $childSkus = array_map(
+            static fn (array $a): string => trim((string) ($a['sku'] ?? '')),
+            $associations
+        );
+        $this->inheritImageFromChild(
+            $parent,
+            array_filter($childSkus),
+            $this->productRepository,
+            $this->galleryManagement,
+            $this->galleryEntryFactory,
+            $this->imageContentFactory,
+            $this->filesystem,
+            $this->logger
+        );
     }
 }

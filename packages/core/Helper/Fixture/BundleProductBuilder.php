@@ -10,8 +10,12 @@ use Magento\Bundle\Api\ProductLinkManagementInterface;
 use Magento\Bundle\Api\ProductOptionManagementInterface;
 use Magento\Bundle\Api\ProductOptionRepositoryInterface;
 use Magento\Bundle\Model\Product\Type as BundleType;
+use Magento\Catalog\Api\Data\ProductAttributeMediaGalleryEntryInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeMediaGalleryManagementInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\Api\Data\ImageContentInterfaceFactory;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Filesystem;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -24,6 +28,8 @@ use Psr\Log\LoggerInterface;
  */
 class BundleProductBuilder
 {
+    use InheritsChildImage;
+
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
         private readonly ProductOptionManagementInterface $optionManagement,
@@ -31,7 +37,11 @@ class BundleProductBuilder
         private readonly ProductLinkManagementInterface $linkManagement,
         private readonly OptionInterfaceFactory $optionFactory,
         private readonly LinkInterfaceFactory $linkFactory,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
+        private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
+        private readonly ImageContentInterfaceFactory $imageContentFactory,
+        private readonly Filesystem $filesystem
     ) {
     }
 
@@ -112,5 +122,26 @@ class BundleProductBuilder
                 $this->linkManagement->addChildByProductSku($parentSku, (int) $optionId, $link);
             }
         }
+
+        // Once links are in place, give the bundle parent its own hero
+        // image inherited from the first selectable child.
+        $allSelectionSkus = [];
+        foreach ($options as $opt) {
+            foreach ($opt['selections'] ?? [] as $sel) {
+                if (!empty($sel['sku'])) {
+                    $allSelectionSkus[] = (string) $sel['sku'];
+                }
+            }
+        }
+        $this->inheritImageFromChild(
+            $parent,
+            $allSelectionSkus,
+            $this->productRepository,
+            $this->galleryManagement,
+            $this->galleryEntryFactory,
+            $this->imageContentFactory,
+            $this->filesystem,
+            $this->logger
+        );
     }
 }
