@@ -45,13 +45,13 @@ For each package you intend to publish:
 ## Cutting a release
 
 Each composer package versions independently (per the spec in §2). Tag
-and push from the **default branch** after CI is green.
+and push from `master` (the default branch) after CI is green.
 
 ### Per-package release (recommended)
 
 ```bash
 # Update the relevant CHANGELOG entry on a PR, merge it.
-git checkout main
+git checkout master
 git pull --ff-only
 
 # Tag the package and version. The directory name in `packages/`
