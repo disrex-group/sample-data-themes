@@ -58,16 +58,19 @@ class ConfigurableProductFixture implements FixtureInterface
             return;
         }
 
-        // 1. Import variations as hidden simple products.
+        // 1. Import variations as hidden simple products. The CSV uses
+        // `child_sku` but the importer wants `sku` — translate before passing.
         foreach ($this->csvParser->parse($variationsCsv) as $row) {
+            $childSku = $row['child_sku'] ?? '';
             try {
+                $row['sku'] = $childSku;
                 $row['type_id'] = 'simple';
                 $row['visibility'] = (string) Visibility::VISIBILITY_NOT_VISIBLE;
                 $this->productImporter->createOrUpdateBase($row);
             } catch (\Throwable $e) {
                 $this->logger->warning(sprintf(
                     '[disrex/sample-data-themes] Variant %s failed: %s',
-                    $row['child_sku'] ?? '?',
+                    $childSku ?: '?',
                     $e->getMessage()
                 ));
             }
