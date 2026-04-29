@@ -10,6 +10,7 @@ use Disrex\SampleDataThemesCore\Helper\Fixture\StoreviewManager;
 use Disrex\SampleDataThemesCore\Model\FixtureRunner;
 use Disrex\SampleDataThemesCore\Model\ThemeRegistry;
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Indexer\IndexerRegistry;
 use Magento\Framework\Registry;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\QuestionHelper;
@@ -29,13 +30,30 @@ class ThemeDeployCommand extends Command
     public const OPT_SKIP_MEDIA = 'skip-media';
     public const OPT_DRY_RUN = 'dry-run';
     public const OPT_FORCE = 'force';
+    public const OPT_SKIP_REINDEX = 'skip-reindex';
+
+    /**
+     * Indexers refreshed automatically after a deploy run. Kept narrow so
+     * we don't slow down the command with unrelated heavy reindexes — these
+     * cover the visibility paths we know our fixtures touch (product EAV,
+     * category-product, prices, stock, search).
+     */
+    private const POST_DEPLOY_INDEXERS = [
+        'catalog_product_attribute',
+        'catalog_product_category',
+        'catalog_category_product',
+        'catalog_product_price',
+        'cataloginventory_stock',
+        'catalogsearch_fulltext',
+    ];
 
     public function __construct(
         private readonly ThemeRegistry $registry,
         private readonly FixtureRunner $runner,
         private readonly StoreviewManager $storeviewManager,
         private readonly AppState $appState,
-        private readonly Registry $magentoRegistry
+        private readonly Registry $magentoRegistry,
+        private readonly IndexerRegistry $indexerRegistry
     ) {
         parent::__construct();
     }
@@ -65,7 +83,13 @@ class ThemeDeployCommand extends Command
             )
             ->addOption(self::OPT_SKIP_MEDIA, null, InputOption::VALUE_NONE, 'Skip image import.')
             ->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Print plan; do not write.')
-            ->addOption(self::OPT_FORCE, null, InputOption::VALUE_NONE, 'Re-run even if already installed.');
+            ->addOption(self::OPT_FORCE, null, InputOption::VALUE_NONE, 'Re-run even if already installed.')
+            ->addOption(
+                self::OPT_SKIP_REINDEX,
+                null,
+                InputOption::VALUE_NONE,
+                'Skip the catalog reindex pass that runs after a successful deploy.'
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -102,14 +126,42 @@ class ThemeDeployCommand extends Command
 
         $this->summarize($result, $output);
 
+        if ($result->isSuccessful() && !$input->getOption(self::OPT_SKIP_REINDEX)) {
+            $this->reindexCatalog($output);
+        }
+
         $output->writeln('');
         $output->writeln(
-            '<comment>Run </comment>'
-            . '<info>bin/magento setup:upgrade && bin/magento indexer:reindex</info>'
-            . '<comment> to finalize.</comment>'
+            '<comment>Tip:</comment> run <info>bin/magento setup:upgrade</info> if this is the first deploy.'
         );
 
         return $result->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * Refresh the indexers that surface fixture data (image attributes,
+     * category links, prices, stock, search) so the admin grid and
+     * storefront see the new products immediately. Failures here don't
+     * abort the deploy — fixtures already landed; the user can re-run
+     * `bin/magento indexer:reindex` if needed.
+     */
+    private function reindexCatalog(OutputInterface $output): void
+    {
+        $output->writeln('');
+        $output->writeln('<info>Reindex:</info>');
+        foreach (self::POST_DEPLOY_INDEXERS as $code) {
+            try {
+                $indexer = $this->indexerRegistry->get($code);
+                $indexer->reindexAll();
+                $output->writeln(sprintf('  <info>✓</info> %s', $code));
+            } catch (\Throwable $e) {
+                $output->writeln(sprintf(
+                    '  <error>✗ %s — %s</error>',
+                    $code,
+                    $e->getMessage()
+                ));
+            }
+        }
     }
 
     private function resolveTheme(InputInterface $input, OutputInterface $output): ?ThemeInterface

@@ -144,6 +144,13 @@ class CategoryImporter
     }
 
     /**
+     * Resolve a list of url-key paths to category ids, including every
+     * ancestor along each path. A row whose `categories` column is
+     * `"living-room/coffee-tables"` should make the product visible in both
+     * the leaf and its parents — admin product grids and non-anchor
+     * storefront views don't aggregate descendants automatically, so we
+     * link the product to each ancestor explicitly.
+     *
      * @param array<int, string> $paths
      * @return array<int, int>
      */
@@ -151,9 +158,14 @@ class CategoryImporter
     {
         $ids = [];
         foreach ($paths as $path) {
-            $id = $this->resolvePathToId($path);
-            if ($id !== null) {
-                $ids[] = $id;
+            $segments = array_values(array_filter(explode('/', $path)));
+            $accumulated = '';
+            foreach ($segments as $segment) {
+                $accumulated = $accumulated === '' ? $segment : $accumulated . '/' . $segment;
+                $id = $this->resolvePathToId($accumulated);
+                if ($id !== null && !in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
             }
         }
         return $ids;
