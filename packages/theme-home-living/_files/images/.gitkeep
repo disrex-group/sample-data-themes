@@ -1,0 +1,6 @@
+# Placeholder.
+#
+# The theme-home-living package ships without bundled images. Install
+# `disrex/sample-data-theme-home-living-media` for the AI-generated product
+# photography, or drop your own files here matching the SKUs in the base
+# CSVs (filenames are listed in the `images` column).

@@ -1,0 +1,3 @@
+sku,attribute_set,visibility,status,categories,associated_skus
+DRX-HL-SET-OSL,furniture,4,1,bedroom,"DRX-HL-BED-001:1,DRX-HL-NS-001:2,DRX-HL-WAR-001:1"
+DRX-HL-SET-COP,furniture,4,1,dining,"DRX-HL-DT-001:1,DRX-HL-DC-001:4"

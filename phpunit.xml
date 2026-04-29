@@ -14,14 +14,21 @@
         <testsuite name="core-unit">
             <directory>packages/core/Test/Unit</directory>
         </testsuite>
+        <testsuite name="theme-home-living">
+            <directory>packages/theme-home-living/Test/Unit</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
             <directory>packages/core</directory>
+            <directory>packages/theme-home-living</directory>
         </include>
         <exclude>
             <directory>packages/core/Test</directory>
             <directory>packages/core/etc</directory>
+            <directory>packages/theme-home-living/Test</directory>
+            <directory>packages/theme-home-living/etc</directory>
+            <directory>packages/theme-home-living/_files</directory>
         </exclude>
     </source>
 </phpunit>

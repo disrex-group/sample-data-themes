@@ -43,3 +43,6 @@ jobs:
 
       - name: PHPUnit
         run: composer test
+
+      - name: Theme validator (home-living)
+        run: php tools/theme-validator.php packages/theme-home-living

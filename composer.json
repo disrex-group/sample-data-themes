@@ -33,7 +33,9 @@
     "autoload-dev": {
         "psr-4": {
             "Disrex\\SampleDataThemesCore\\": "packages/core/",
-            "Disrex\\SampleDataThemesCore\\Test\\": "packages/core/Test/"
+            "Disrex\\SampleDataThemesCore\\Test\\": "packages/core/Test/",
+            "Disrex\\SampleDataThemeHomeLiving\\": "packages/theme-home-living/",
+            "Disrex\\SampleDataThemeHomeLiving\\Test\\": "packages/theme-home-living/Test/"
         }
     },
     "scripts": {

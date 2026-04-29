@@ -1,0 +1,24 @@
+{
+    "name": "disrex/sample-data-theme-home-living-media",
+    "description": "AI-generated product photography for the disrex/sample-data-theme-home-living catalog. Optional but recommended for sales demos.",
+    "type": "magento2-module",
+    "license": "MIT",
+    "keywords": [
+        "magento",
+        "magento2",
+        "mageos",
+        "sample-data",
+        "media",
+        "images"
+    ],
+    "require": {
+        "php": "~8.2.0 || ~8.3.0 || ~8.4.0",
+        "disrex/sample-data-theme-home-living": "^1.0",
+        "magento/framework": "^103.0"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ]
+    }
+}

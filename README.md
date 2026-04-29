@@ -4,9 +4,10 @@ Theme-based sample data for Magento 2 / MageOS. Replaces the stale Luma demo
 content with thematically consistent catalogs (Home & Living, Technology,
 Clothing, ...) chosen by the user at install time.
 
-> Status: **Phase 1 / core framework** — the registry, fixture runner, helpers
-> and CLI commands. Reference themes live in sibling packages and are tracked
-> separately.
+> Status: **Phase 1 + 2** — the core framework plus the first reference
+> theme (`disrex/sample-data-theme-home-living`, EN + NL). The optional
+> media bundle ships as a skeleton package; populate `_files/images/`
+> with photography or generated assets.
 
 ## Installation
 
@@ -44,11 +45,28 @@ behaviour.
 ## Project layout
 
 ```
-packages/core/                 disrex/sample-data-themes-core (this package)
-packages/theme-*/              theme content packages (separate, not in this branch)
-docs/                          contributor documentation
-tools/                         schema validators and helper scripts
-.github/workflows/             CI: PHPUnit, PHPStan, PHPCS
+packages/core/                       disrex/sample-data-themes-core
+packages/theme-home-living/          disrex/sample-data-theme-home-living
+packages/theme-home-living-media/    disrex/sample-data-theme-home-living-media (optional)
+docs/                                contributor documentation
+tools/                               schema validators and helper scripts
+.github/workflows/                   CI: PHPUnit, PHPStan, PHPCS
+```
+
+### Home & Living theme
+
+* 6 top-level categories, 22 categories total
+* 28 frontend-visible products: 18 simple, 6 configurable (with 18 variants),
+  2 grouped, 2 bundle
+* 7 custom attributes including visual swatches (colour) and text swatches
+  (fabric)
+* 4 attribute sets (furniture, lighting, textiles, decor)
+* Full EN + NL translations for every category, product and attribute label
+
+Verify the on-disk integrity of any theme package with:
+
+```bash
+php tools/theme-validator.php packages/theme-home-living
 ```
 
 ## Authoring a theme

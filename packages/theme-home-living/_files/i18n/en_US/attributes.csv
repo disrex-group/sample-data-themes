@@ -1,0 +1,34 @@
+attribute_code,frontend_label,option_code,option_label
+material,Material,,
+material,Material,wood,Wood
+material,Material,metal,Metal
+material,Material,fabric,Fabric
+material,Material,leather,Leather
+material,Material,glass,Glass
+material,Material,ceramic,Ceramic
+color_family,Color,,
+color_family,Color,grey,Grey
+color_family,Color,beige,Beige
+color_family,Color,navy,Navy
+color_family,Color,forest,Forest Green
+color_family,Color,white,White
+color_family,Color,black,Black
+fabric,Fabric,,
+fabric,Fabric,linen,Linen
+fabric,Fabric,velvet,Velvet
+fabric,Fabric,leather,Leather
+fabric,Fabric,boucle,Boucle
+room,Room,,
+room,Room,living,Living Room
+room,Room,bedroom,Bedroom
+room,Room,dining,Dining Room
+room,Room,office,Office
+room,Room,outdoor,Outdoor
+style,Style,,
+style,Style,scandinavian,Scandinavian
+style,Style,industrial,Industrial
+style,Style,mid-century,Mid-century
+style,Style,modern,Modern
+style,Style,bohemian,Bohemian
+dimensions,Dimensions,,
+weight_capacity,Weight Capacity,,

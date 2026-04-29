@@ -1,0 +1,7 @@
+sku,attribute_set,price,visibility,status,categories,configurable_attributes
+DRX-HL-SOFA-HEL,furniture,899.00,4,1,living-room/sofas-couches,"color_family,fabric"
+DRX-HL-SOFA-OSL,furniture,1199.00,4,1,living-room/sofas-couches,color_family
+DRX-HL-LC-AAR,furniture,449.00,4,1,living-room/lounge-chairs,fabric
+DRX-HL-DC-CHA,furniture,119.00,4,1,dining/dining-chairs,color_family
+DRX-HL-WA-PRT,decor,89.00,4,1,decor/wall-art,style
+DRX-HL-OUT-GAR,furniture,599.00,4,1,outdoor/garden-furniture,color_family

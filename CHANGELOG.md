@@ -23,6 +23,42 @@ grouped by package.
 - Plugin on `Magento\SampleData\Console\Command\SampleDataDeployCommand` that
   offers the themed alternative when at least one theme is registered.
 - `AbstractCsvFixture` base class and `CsvParser` helper.
-- Entity importers: `ProductImporter`, `CategoryImporter`, `AttributeImporter`.
-- PHPUnit, PHPStan (level 8) and PHPCS (PSR-12) tooling, plus GitHub Actions
-  CI matrix across PHP 8.2 / 8.3 / 8.4.
+- Entity importers: `ProductImporter`, `CategoryImporter`, `AttributeImporter`,
+  `AttributeSetImporter`, `ProductLinker`.
+- Type-specific builders: `ConfigurableProductBuilder`,
+  `GroupedProductBuilder`, `BundleProductBuilder`.
+- PHPUnit, PHPStan and PHPCS (PSR-12) tooling, plus GitHub Actions CI
+  matrix across PHP 8.2 / 8.3 / 8.4.
+
+### `disrex/sample-data-theme-home-living`
+
+#### Added
+
+- First reference theme: scandinavian Home & Living catalog.
+- 22 categories across Living Room, Bedroom, Dining, Lighting, Decor and
+  Outdoor.
+- 28 frontend products: 18 simple, 6 configurable (18 variants), 2 grouped,
+  2 bundle. SKUs prefixed `DRX-HL-`.
+- 7 custom attributes (material, color_family, fabric, room, style,
+  dimensions, weight_capacity), including visual and text swatches.
+- 4 attribute sets: furniture, lighting, textiles, decor.
+- Full EN_US + NL_NL translations for every category, product and
+  attribute / option.
+- `Test/Unit/CsvIntegrityTest` — sanity checks the on-disk content
+  parses, hits expected counts, and has no dangling SKU references.
+
+### `disrex/sample-data-theme-home-living-media`
+
+#### Added
+
+- Skeleton companion package: composer + registration + module.xml. Drop
+  product photography into `_files/images/` (filenames listed in the theme's
+  base CSVs); kept separate so the theme code package stays small.
+
+### `tools/`
+
+#### Added
+
+- `theme-validator.php` — drift checker that compares each i18n CSV against
+  the base layer and reports missing rows (warnings) and extra rows
+  (errors). Runs against any theme package; intended for use in CI.
