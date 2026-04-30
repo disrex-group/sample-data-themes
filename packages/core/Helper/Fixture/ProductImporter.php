@@ -261,6 +261,14 @@ class ProductImporter
     }
 
     /**
+     * Resolve which websites a product should be assigned to. Honours an
+     * explicit `website_ids` column on the CSV row when set; otherwise
+     * defaults to *every* non-admin website that has at least one
+     * storeview attached. The default exists so a multi-site install
+     * (e.g. en + nl on separate websites) sees the catalog on every
+     * storefront after a single sample-data deploy, without each row
+     * having to enumerate website ids.
+     *
      * @param array<string, string> $row
      * @return array<int, int>
      */
@@ -269,7 +277,19 @@ class ProductImporter
         if (!empty($row['website_ids'])) {
             return array_map('intval', array_filter(array_map('trim', explode(',', $row['website_ids']))));
         }
-        return [1];
+        $connection = $this->resourceConnection->getConnection();
+        $storeWebsiteTable = $this->resourceConnection->getTableName('store_website');
+        $storeTable = $this->resourceConnection->getTableName('store');
+        $rows = $connection->fetchCol(
+            $connection->select()
+                ->from(['w' => $storeWebsiteTable], ['website_id'])
+                ->joinInner(['s' => $storeTable], 's.website_id = w.website_id', [])
+                ->where('w.website_id != ?', 0)
+                ->where('s.store_id != ?', 0)
+                ->distinct()
+        );
+        $ids = array_map('intval', $rows);
+        return $ids !== [] ? $ids : [1];
     }
 
     /**
