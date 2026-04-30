@@ -47,6 +47,7 @@ class Theme extends AbstractTheme
 
     protected const LOCALES = ['en_US', 'nl_NL'];
     protected const DEFAULT_LOCALE = 'en_US';
+    protected const SKU_PREFIX = 'DRX-HL-';
 
     protected const OPTIONAL_DEPENDENCIES = [
         'Disrex_SampleDataThemeHomeLivingMedia',

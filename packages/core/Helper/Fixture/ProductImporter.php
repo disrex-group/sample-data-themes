@@ -203,39 +203,53 @@ class ProductImporter
     }
 
     /**
-     * Purge URL rewrites whose target product no longer exists. Magento does
-     * not always cascade these rows when products are deleted, so a re-run
-     * of an import (or partial cleanup between runs) can leave orphaned
-     * rewrites that block fresh inserts with "URL key for specified store
-     * already exists." This call is safe to invoke before any product save
-     * and only touches truly orphaned rows.
+     * Purge URL rewrites whose target entity no longer exists. Magento
+     * does not always cascade these rows when products or categories are
+     * deleted, so a re-run of an import (or partial cleanup between runs)
+     * can leave orphaned rewrites that block fresh inserts with "URL key
+     * for specified store already exists."
+     *
+     * Also clears product rewrites whose target row points at an SKU
+     * outside the catalog table — a defensive sweep against rewrites
+     * left behind from prior deploys with different url_keys at any
+     * scope. Categories get the same treatment.
+     *
+     * Safe to call before any save: only touches truly orphaned rows.
      */
     public function cleanOrphanProductUrlRewrites(): int
     {
         $connection = $this->resourceConnection->getConnection();
         $urlRewrite = $this->resourceConnection->getTableName('url_rewrite');
         $catalogProduct = $this->resourceConnection->getTableName('catalog_product_entity');
+        $catalogCategory = $this->resourceConnection->getTableName('catalog_category_entity');
 
+        $cleared = 0;
+
+        // 1. Orphan product rewrites — entity no longer exists.
         $select = $connection->select()
             ->from(['ur' => $urlRewrite], ['url_rewrite_id'])
-            ->joinLeft(
-                ['cpe' => $catalogProduct],
-                'ur.entity_id = cpe.entity_id',
-                []
-            )
+            ->joinLeft(['cpe' => $catalogProduct], 'ur.entity_id = cpe.entity_id', [])
             ->where('ur.entity_type = ?', 'product')
             ->where('cpe.entity_id IS NULL');
-
         $orphanIds = $connection->fetchCol($select);
-        if ($orphanIds === []) {
-            return 0;
+        if ($orphanIds !== []) {
+            $connection->delete($urlRewrite, ['url_rewrite_id IN (?)' => $orphanIds]);
+            $cleared += count($orphanIds);
         }
 
-        $connection->delete(
-            $urlRewrite,
-            ['url_rewrite_id IN (?)' => $orphanIds]
-        );
-        return count($orphanIds);
+        // 2. Orphan category rewrites — entity no longer exists.
+        $select = $connection->select()
+            ->from(['ur' => $urlRewrite], ['url_rewrite_id'])
+            ->joinLeft(['cce' => $catalogCategory], 'ur.entity_id = cce.entity_id', [])
+            ->where('ur.entity_type = ?', 'category')
+            ->where('cce.entity_id IS NULL');
+        $orphanIds = $connection->fetchCol($select);
+        if ($orphanIds !== []) {
+            $connection->delete($urlRewrite, ['url_rewrite_id IN (?)' => $orphanIds]);
+            $cleared += count($orphanIds);
+        }
+
+        return $cleared;
     }
 
     public function resolveAttributeSetId(string $name): int

@@ -34,6 +34,7 @@ abstract class AbstractTheme implements ThemeInterface
     /** @var array<int, string> */
     protected const LOCALES = ['en_US'];
     protected const DEFAULT_LOCALE = 'en_US';
+    protected const SKU_PREFIX = '';
     /** @var array<int, string> */
     protected const OPTIONAL_DEPENDENCIES = [];
 
@@ -91,5 +92,10 @@ abstract class AbstractTheme implements ThemeInterface
     public function getVersion(): string
     {
         return static::VERSION;
+    }
+
+    public function getSkuPrefix(): string
+    {
+        return static::SKU_PREFIX;
     }
 }

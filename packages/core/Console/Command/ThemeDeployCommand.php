@@ -6,6 +6,7 @@ namespace Disrex\SampleDataThemesCore\Console\Command;
 
 use Disrex\SampleDataThemesCore\Api\ThemeInterface;
 use Disrex\SampleDataThemesCore\Exception\MissingStoreviewException;
+use Disrex\SampleDataThemesCore\Helper\Fixture\PrimaryLocalePromoter;
 use Disrex\SampleDataThemesCore\Helper\Fixture\StoreviewManager;
 use Disrex\SampleDataThemesCore\Model\FixtureRunner;
 use Disrex\SampleDataThemesCore\Model\ThemeRegistry;
@@ -31,6 +32,7 @@ class ThemeDeployCommand extends Command
     public const OPT_DRY_RUN = 'dry-run';
     public const OPT_FORCE = 'force';
     public const OPT_SKIP_REINDEX = 'skip-reindex';
+    public const OPT_PRIMARY_LOCALE = 'primary-locale';
 
     /**
      * Indexers refreshed automatically after a deploy run. Kept narrow so
@@ -53,7 +55,8 @@ class ThemeDeployCommand extends Command
         private readonly StoreviewManager $storeviewManager,
         private readonly AppState $appState,
         private readonly Registry $magentoRegistry,
-        private readonly IndexerRegistry $indexerRegistry
+        private readonly IndexerRegistry $indexerRegistry,
+        private readonly PrimaryLocalePromoter $primaryLocalePromoter
     ) {
         parent::__construct();
     }
@@ -89,6 +92,17 @@ class ThemeDeployCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Skip the catalog reindex pass that runs after a successful deploy.'
+            )
+            ->addOption(
+                self::OPT_PRIMARY_LOCALE,
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Locale to promote onto the default storeview after fixtures land. '
+                . 'Copies that locale\'s storeview EAV (product names, category names, '
+                . 'attribute and option labels) onto store_id=1, switches its locale + '
+                . 'currency, and regenerates URL rewrites. Useful for single-store demo '
+                . 'installs that should render in the chosen language without cookie '
+                . 'switching or path prefixes.'
             );
     }
 
@@ -126,6 +140,10 @@ class ThemeDeployCommand extends Command
 
         $this->summarize($result, $output);
 
+        if ($result->isSuccessful()) {
+            $this->maybePromotePrimaryLocale($input, $theme, $output);
+        }
+
         if ($result->isSuccessful() && !$input->getOption(self::OPT_SKIP_REINDEX)) {
             $this->reindexCatalog($output);
         }
@@ -136,6 +154,67 @@ class ThemeDeployCommand extends Command
         );
 
         return $result->isSuccessful() ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * Run the optional --primary-locale step.
+     */
+    private function maybePromotePrimaryLocale(
+        InputInterface $input,
+        ThemeInterface $theme,
+        OutputInterface $output
+    ): void {
+        $primaryLocale = $input->getOption(self::OPT_PRIMARY_LOCALE);
+        if (!is_string($primaryLocale) || $primaryLocale === '') {
+            return;
+        }
+        if (!in_array($primaryLocale, $theme->getSupportedLocales(), true)) {
+            $output->writeln(sprintf(
+                '<error>Primary locale "%s" is not in the theme\'s supported set (%s); skipping promotion.</error>',
+                $primaryLocale,
+                implode(', ', $theme->getSupportedLocales())
+            ));
+            return;
+        }
+        $skuPrefix = $theme->getSkuPrefix();
+        if ($skuPrefix === '') {
+            $output->writeln(
+                '<error>Theme declares no SKU prefix; refusing to overlay onto the default storeview '
+                . '(would risk touching unrelated catalog data).</error>'
+            );
+            return;
+        }
+
+        $output->writeln('');
+        $output->writeln(sprintf(
+            '<info>Promoting locale "%s" onto the default storeview…</info>',
+            $primaryLocale
+        ));
+        $result = $this->primaryLocalePromoter->promote($primaryLocale, $skuPrefix);
+        switch ($result->status) {
+            case 'ok':
+                $output->writeln(sprintf(
+                    '  <info>✓</info> overlay applied: store_id %d ← store_id %d (%d product rows, '
+                    . '%d category rows, %d option labels, %d attribute labels), '
+                    . '%d category rewrites, %d product rewrites',
+                    $result->stats['target_store_id'] ?? 1,
+                    $result->stats['source_store_id'] ?? 0,
+                    $result->stats['product_rows'] ?? 0,
+                    $result->stats['category_rows'] ?? 0,
+                    $result->stats['option_rows'] ?? 0,
+                    $result->stats['label_rows'] ?? 0,
+                    $result->stats['category_rewrites'] ?? 0,
+                    $result->stats['product_rewrites'] ?? 0
+                ));
+                break;
+            case 'skipped':
+                $output->writeln(sprintf('  <comment>↷</comment> %s', $result->message));
+                break;
+            case 'failed':
+            default:
+                $output->writeln(sprintf('  <error>✗ %s</error>', $result->message));
+                break;
+        }
     }
 
     /**

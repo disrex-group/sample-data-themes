@@ -77,4 +77,19 @@ interface ThemeInterface
      * that a theme can re-publish its content without a code release.
      */
     public function getVersion(): string;
+
+    /**
+     * SKU prefix that scopes write operations to this theme's catalog.
+     * Used by helpers that mutate the live catalog (e.g. promoting a
+     * locale onto the default storeview, regenerating URL rewrites) so
+     * they don't touch SKUs from other sample-data themes or from the
+     * operator's own products.
+     *
+     * Convention: short uppercase prefix ending in a separator,
+     * e.g. `DRX-HL-` for the disrex Home & Living theme. Themes that
+     * don't enforce a prefix can return an empty string, but then
+     * locale promotion and similar operations will refuse to run on a
+     * shared install.
+     */
+    public function getSkuPrefix(): string;
 }
