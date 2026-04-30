@@ -60,6 +60,11 @@ class ConfigurableProductFixture implements FixtureInterface
 
         // 1. Import variations as hidden simple products. The CSV uses
         // `child_sku` but the importer wants `sku` — translate before passing.
+        // Variants also get name/url_key translations so they read in the
+        // correct language on the storefront when a visitor lands on them
+        // via direct link or search (Magento defaults configurable PDPs to
+        // the parent name, but the variant page itself, the breadcrumbs,
+        // and admin grid all want the localized variant name).
         foreach ($this->csvParser->parse($variationsCsv) as $row) {
             $childSku = $row['child_sku'] ?? '';
             try {
@@ -67,6 +72,7 @@ class ConfigurableProductFixture implements FixtureInterface
                 $row['type_id'] = 'simple';
                 $row['visibility'] = (string) Visibility::VISIBILITY_NOT_VISIBLE;
                 $this->productImporter->createOrUpdateBase($row);
+                $this->applyTranslations($childSku);
             } catch (\Throwable $e) {
                 $this->logger->warning(sprintf(
                     '[disrex/sample-data-themes] Variant %s failed: %s',

@@ -13,6 +13,7 @@ use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\Product\Type as ProductType;
 use Magento\Catalog\Model\Product\Visibility;
+use Magento\Catalog\Model\ResourceModel\Product\Action as ProductActionResource;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Eav\Api\AttributeSetRepositoryInterface;
 use Magento\Eav\Api\Data\AttributeSetInterface;
@@ -58,7 +59,8 @@ class ProductImporter
         private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
         private readonly ImageContentInterfaceFactory $imageContentFactory,
         private readonly ModuleDirReader $moduleDirReader,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ProductActionResource $productActionResource
     ) {
     }
 
@@ -134,24 +136,55 @@ class ProductImporter
         if ($storeIds === []) {
             return;
         }
-        foreach ($storeIds as $storeId) {
-            try {
-                $product = $this->productRepository->get($sku, true, $storeId, true);
-            } catch (NoSuchEntityException) {
-                $this->logger->warning(sprintf(
-                    '[disrex/sample-data-themes] Cannot translate %s — not found.',
-                    $sku
-                ));
+
+        // Resolve the SKU once.
+        try {
+            $entityId = (int) $this->productRepository->get($sku, false, null, false)->getId();
+        } catch (NoSuchEntityException) {
+            $this->logger->warning(sprintf(
+                '[disrex/sample-data-themes] Cannot translate %s — not found.',
+                $sku
+            ));
+            return;
+        }
+
+        // Going through ProductRepository::save() at storeview scope is
+        // unreliable here for two reasons:
+        //   1. Magento's EAV save layer treats a storeview value that
+        //      matches the default-store value as "use default" and
+        //      deletes the storeview row, breaking translations whose
+        //      strings happen to coincide with English.
+        //   2. The repository's static cache holds stale storeId state
+        //      between sequential saves of the same SKU.
+        // Writing the storeview EAV rows directly via the Action resource
+        // bypasses both quirks; it's the same mechanism the admin product
+        // form uses when toggling "Use Default Value" off.
+        $clean = [];
+        foreach ($fields as $field => $value) {
+            if ($value === null || $value === '') {
                 continue;
             }
-            $product->setStoreId($storeId);
-            foreach ($fields as $field => $value) {
-                if ($value === null || $value === '') {
-                    continue;
-                }
-                $product->setData($field, $value);
+            $clean[$field] = $value;
+        }
+        if ($clean === []) {
+            return;
+        }
+
+        foreach ($storeIds as $storeId) {
+            try {
+                $this->productActionResource->updateAttributes(
+                    [$entityId],
+                    $clean,
+                    (int) $storeId
+                );
+            } catch (\Throwable $e) {
+                $this->logger->warning(sprintf(
+                    '[disrex/sample-data-themes] Translation write failed for %s at store %d: %s',
+                    $sku,
+                    $storeId,
+                    $e->getMessage()
+                ), ['exception' => $e]);
             }
-            $this->productRepository->save($product);
         }
     }
 

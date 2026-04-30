@@ -185,10 +185,11 @@ class AttributeImporter
             }
 
             if ($optionLabels !== []) {
-                $effectiveStoreIds = $isDefaultLocale
-                    ? array_unique(array_merge([0], $storeIds))
-                    : $storeIds;
-                $this->applyOptionLabels($attribute, $optionLabels, $effectiveStoreIds);
+                // Keep store_id=0 holding the lowercase CSV code as the
+                // stable identifier — that's what diffNewOptions() and
+                // resolveOptionId() key on. Frontend labels are written
+                // at storeview scope only, even for the default locale.
+                $this->applyOptionLabels($attribute, $optionLabels, $storeIds);
             }
 
             $this->attributeRepository->save($attribute);
@@ -240,37 +241,46 @@ class AttributeImporter
      */
     private function applyOptionLabels($attribute, array $optionCodeToLabel, array $storeIds): void
     {
-        // Reading the attribute's options requires the source model. For
-        // theme imports we treat the admin label as the option's stable
-        // identifier (the spec uses `code` style identifiers, so the admin
-        // label *is* the code).
-        $source = $attribute->getSource();
-        if (!$source) {
-            return;
-        }
-        $options = $source->getAllOptions(false);
+        // The CSV uses lowercase option codes (`beige`, `linen`). After
+        // en_US translates the admin label to the human form (`Beige`),
+        // the source-model label no longer matches verbatim — we use the
+        // raw option_value table and option_id as the stable identifier.
+        //
+        // We also write the rows directly via INSERT…ON DUPLICATE KEY
+        // UPDATE rather than via $attribute->setData('option', …) plus
+        // attributeRepository->save(). The repository round-trip drops
+        // storeview labels that happen to coincide with the en_US label,
+        // breaking translations like fabric=Linen / fabric=Linnen on the
+        // few options where the languages share a word. Direct writes
+        // bypass that side effect.
+        $connection = $this->resourceConnection->getConnection();
+        $optionTable = $this->resourceConnection->getTableName('eav_attribute_option');
+        $optionValueTable = $this->resourceConnection->getTableName('eav_attribute_option_value');
 
-        $payload = [];
-        foreach ($options as $option) {
-            $optionId = $option['value'] ?? null;
-            $adminLabel = $option['label'] ?? null;
-            if ($optionId === null || $adminLabel === null) {
-                continue;
-            }
-            if (!isset($optionCodeToLabel[$adminLabel])) {
+        $codeToOptionId = $connection->fetchPairs(
+            $connection->select()
+                ->from(['ov' => $optionValueTable], ['value', 'option_id'])
+                ->join(['o' => $optionTable], 'o.option_id = ov.option_id', [])
+                ->where('o.attribute_id = ?', (int) $attribute->getId())
+                ->where('ov.store_id = 0')
+        );
+
+        foreach ($optionCodeToLabel as $code => $label) {
+            $optionId = $codeToOptionId[$code] ?? null;
+            if ($optionId === null) {
                 continue;
             }
             foreach ($storeIds as $storeId) {
-                $payload[$optionId][$storeId] = $optionCodeToLabel[$adminLabel];
+                $connection->insertOnDuplicate(
+                    $optionValueTable,
+                    [
+                        'option_id' => (int) $optionId,
+                        'store_id' => (int) $storeId,
+                        'value' => $label,
+                    ],
+                    ['value']
+                );
             }
-            // Preserve the admin (store 0) label.
-            $payload[$optionId][0] = $adminLabel;
-        }
-
-        if ($payload !== []) {
-            $existing = $attribute->getData('option') ?: [];
-            $existing['value'] = ($existing['value'] ?? []) + $payload;
-            $attribute->setData('option', $existing);
         }
     }
 
