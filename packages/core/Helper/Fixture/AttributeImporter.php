@@ -120,10 +120,18 @@ class AttributeImporter
      * Apply per-store labels for an attribute and its options. Pass the
      * full set of rows from a single locale's `attributes.csv`.
      *
+     * When `$isDefaultLocale` is true, also writes the admin (store_id=0)
+     * frontend_label and option labels. Without that step, layered-nav
+     * filter headings and admin-grid attribute selectors fall back to the
+     * placeholder "Label" string set when the attribute was first created.
+     * The default-locale strings are the right global default because
+     * Magento uses store_id=0 as a fallback for any storeview that has
+     * no explicit translation.
+     *
      * @param array<int, array<string, string>> $rows
      * @param array<int, int> $storeIds
      */
-    public function applyTranslations(array $rows, array $storeIds): void
+    public function applyTranslations(array $rows, array $storeIds, bool $isDefaultLocale = false): void
     {
         if ($storeIds === []) {
             return;
@@ -158,6 +166,12 @@ class AttributeImporter
                     $storeLabels[$storeId] = $label;
                 }
                 $attribute->setStoreLabels($storeLabels);
+                if ($isDefaultLocale) {
+                    // Admin/global default — drives the layered-nav heading
+                    // and any storeview that hasn't been translated.
+                    $attribute->setDefaultFrontendLabel($label);
+                    $attribute->setFrontendLabel($label);
+                }
             }
 
             $optionLabels = [];
@@ -171,7 +185,10 @@ class AttributeImporter
             }
 
             if ($optionLabels !== []) {
-                $this->applyOptionLabels($attribute, $optionLabels, $storeIds);
+                $effectiveStoreIds = $isDefaultLocale
+                    ? array_unique(array_merge([0], $storeIds))
+                    : $storeIds;
+                $this->applyOptionLabels($attribute, $optionLabels, $effectiveStoreIds);
             }
 
             $this->attributeRepository->save($attribute);

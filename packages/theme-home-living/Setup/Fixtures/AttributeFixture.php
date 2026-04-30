@@ -71,7 +71,11 @@ class AttributeFixture extends AbstractCsvFixture
             if ($rows === []) {
                 continue;
             }
-            $this->importer->applyTranslations($rows, $storeIds);
+            $this->importer->applyTranslations(
+                $rows,
+                $storeIds,
+                $locale === $this->theme->getDefaultLocale()
+            );
         }
     }
 
