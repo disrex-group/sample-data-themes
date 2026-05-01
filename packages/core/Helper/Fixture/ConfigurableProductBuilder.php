@@ -23,6 +23,7 @@ use Psr\Log\LoggerInterface;
 class ConfigurableProductBuilder
 {
     use InheritsChildImage;
+    use ReassignsProductTypeCategory;
 
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
@@ -32,7 +33,8 @@ class ConfigurableProductBuilder
         private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
         private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
         private readonly ImageContentInterfaceFactory $imageContentFactory,
-        private readonly Filesystem $filesystem
+        private readonly Filesystem $filesystem,
+        private readonly CategoryImporter $categoryImporter
     ) {
     }
 
@@ -84,6 +86,21 @@ class ConfigurableProductBuilder
         $parent->setExtensionAttributes($extension);
 
         $this->productRepository->save($parent);
+
+        // Re-bind the parent's product-type cross-cut category. When the
+        // parent was first created in step 2 of ConfigurableProductFixture
+        // it was a type=simple placeholder, so ProductImporter linked it
+        // into product-types/simple. Now that we've promoted the type to
+        // configurable we want it under product-types/configurable. The
+        // simples link gets removed; everything else (its real leaf
+        // category, etc.) stays.
+        $this->reassignToTypeCategory(
+            $parent,
+            'product-types/configurable',
+            $this->categoryImporter,
+            $this->productRepository,
+            $this->logger
+        );
 
         // Inherit after the parent save so the parent has a stable id and
         // the gallery API can attach to it.
@@ -168,4 +185,5 @@ class ConfigurableProductBuilder
         }
         return $children;
     }
+
 }

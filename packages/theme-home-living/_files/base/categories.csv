@@ -22,3 +22,9 @@ outdoor,1,1,60,1
 outdoor/garden-furniture,1,1,10,1
 outdoor/outdoor-lighting,1,1,20,1
 cadeaubonnen,1,1,70,1
+product-types,1,1,80,1
+product-types/simple,1,1,10,1
+product-types/configurable,1,1,20,1
+product-types/bundle,1,1,30,1
+product-types/grouped,1,1,40,1
+product-types/virtual,1,1,50,1

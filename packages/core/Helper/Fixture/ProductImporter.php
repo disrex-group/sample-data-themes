@@ -112,6 +112,14 @@ class ProductImporter
 
         if (isset($row['categories']) && $row['categories'] !== '') {
             $paths = array_filter(array_map('trim', explode(',', $row['categories'])));
+            // Cross-cut: also link this product into product-types/<type_id>
+            // if that category exists. This gives the storefront a way to
+            // browse "all simples" / "all configurables" / "all bundles"
+            // etc. without forcing every CSV row to know about it.
+            $typePath = 'product-types/' . $product->getTypeId();
+            if ($this->categoryImporter->resolvePathToId($typePath) !== null) {
+                $paths[] = $typePath;
+            }
             $product->setCategoryIds($this->categoryImporter->resolvePathsToIds($paths));
         }
 

@@ -29,6 +29,7 @@ use Psr\Log\LoggerInterface;
 class BundleProductBuilder
 {
     use InheritsChildImage;
+    use ReassignsProductTypeCategory;
 
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
@@ -41,7 +42,8 @@ class BundleProductBuilder
         private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
         private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
         private readonly ImageContentInterfaceFactory $imageContentFactory,
-        private readonly Filesystem $filesystem
+        private readonly Filesystem $filesystem,
+        private readonly CategoryImporter $categoryImporter
     ) {
     }
 
@@ -74,6 +76,14 @@ class BundleProductBuilder
         $parent->setData('price_view', 0);
         $parent->setData('shipment_type', 0);
         $this->productRepository->save($parent);
+
+        $this->reassignToTypeCategory(
+            $parent,
+            'product-types/bundle',
+            $this->categoryImporter,
+            $this->productRepository,
+            $this->logger
+        );
 
         // Remove existing options to keep the import idempotent.
         // Bundle option listing/deletion live on the repository interface,

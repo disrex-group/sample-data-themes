@@ -22,6 +22,7 @@ use Psr\Log\LoggerInterface;
 class GroupedProductBuilder
 {
     use InheritsChildImage;
+    use ReassignsProductTypeCategory;
 
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
@@ -30,7 +31,8 @@ class GroupedProductBuilder
         private readonly ProductAttributeMediaGalleryManagementInterface $galleryManagement,
         private readonly ProductAttributeMediaGalleryEntryInterfaceFactory $galleryEntryFactory,
         private readonly ImageContentInterfaceFactory $imageContentFactory,
-        private readonly Filesystem $filesystem
+        private readonly Filesystem $filesystem,
+        private readonly CategoryImporter $categoryImporter
     ) {
     }
 
@@ -86,6 +88,14 @@ class GroupedProductBuilder
 
         $parent->setProductLinks(array_values($existing));
         $this->productRepository->save($parent);
+
+        $this->reassignToTypeCategory(
+            $parent,
+            'product-types/grouped',
+            $this->categoryImporter,
+            $this->productRepository,
+            $this->logger
+        );
 
         $childSkus = array_map(
             static fn (array $a): string => trim((string) ($a['sku'] ?? '')),
