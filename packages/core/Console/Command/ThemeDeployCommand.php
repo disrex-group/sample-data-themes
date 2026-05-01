@@ -10,6 +10,7 @@ use Disrex\SampleDataThemesCore\Helper\Fixture\PrimaryLocalePromoter;
 use Disrex\SampleDataThemesCore\Helper\Fixture\StoreviewManager;
 use Disrex\SampleDataThemesCore\Model\FixtureRunner;
 use Disrex\SampleDataThemesCore\Model\ThemeRegistry;
+use Magento\Framework\App\Cache\TypeListInterface;
 use Magento\Framework\App\State as AppState;
 use Magento\Framework\Indexer\IndexerRegistry;
 use Magento\Framework\Registry;
@@ -56,7 +57,8 @@ class ThemeDeployCommand extends Command
         private readonly AppState $appState,
         private readonly Registry $magentoRegistry,
         private readonly IndexerRegistry $indexerRegistry,
-        private readonly PrimaryLocalePromoter $primaryLocalePromoter
+        private readonly PrimaryLocalePromoter $primaryLocalePromoter,
+        private readonly TypeListInterface $cacheTypeList
     ) {
         parent::__construct();
     }
@@ -247,6 +249,32 @@ class ThemeDeployCommand extends Command
                 $output->writeln(sprintf(
                     '  <error>✗ %s — %s</error>',
                     $code,
+                    $e->getMessage()
+                ));
+            }
+        }
+
+        // After the indexers rebuild, the storefront page cache and block
+        // cache still hold the *pre-deploy* HTML — empty category pages,
+        // stale menus, missing facets. Without this flush, an operator
+        // following the deploy with a fresh browser request sees "no
+        // products found" until the 24h cache TTL expires (or they run
+        // `bin/magento cache:clean` manually).
+        //
+        // We flush the bare minimum needed for the storefront to reflect
+        // the new catalog: full_page (Varnish/built-in FPC), block_html
+        // (rendered block fragments — category lists, navigation), and
+        // collections (collection-results cache used by category lists).
+        $output->writeln('');
+        $output->writeln('<info>Cache flush:</info>');
+        foreach (['full_page', 'block_html', 'collections', 'config'] as $cacheType) {
+            try {
+                $this->cacheTypeList->cleanType($cacheType);
+                $output->writeln(sprintf('  <info>✓</info> %s', $cacheType));
+            } catch (\Throwable $e) {
+                $output->writeln(sprintf(
+                    '  <error>✗ %s — %s</error>',
+                    $cacheType,
                     $e->getMessage()
                 ));
             }
