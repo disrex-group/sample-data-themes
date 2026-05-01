@@ -49,6 +49,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PRIMARY = ROOT / 'tools' / 'image-prompts' / 'home-living.json'
 MANIFEST_PHASE2 = ROOT / 'tools' / 'image-prompts' / 'home-living-phase2.json'
+MANIFEST_DEDUP = ROOT / 'tools' / 'image-prompts' / 'home-living-dedup.json'
 IMAGES_DIR = ROOT / 'packages' / 'theme-home-living-media' / '_files' / 'images'
 SCENES_DIR = ROOT / 'packages' / 'theme-home-living-media' / '_files' / 'scenes'
 
@@ -86,6 +87,16 @@ def load_manifests() -> tuple[dict[str, Any], dict[str, Any]]:
         ph2 = json.loads(MANIFEST_PHASE2.read_text())
         for sku, entry in ph2.get('products', {}).items():
             products[sku] = entry
+    if MANIFEST_DEDUP.exists():
+        # Dedup manifest entries reuse the SAME sku as the simple they
+        # replace imagery for, but produce a *new* studio filename. We
+        # need to merge them as a separate "image record" rather than
+        # overwriting the existing product entry. Use a synthetic sku
+        # like "<orig-sku>::dedup" so the runner's plan_jobs sees them
+        # as separate jobs.
+        dedup = json.loads(MANIFEST_DEDUP.read_text())
+        for sku, entry in dedup.get('products', {}).items():
+            products[f'{sku}::dedup'] = entry
     return anchors_conv, products
 
 
