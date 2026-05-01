@@ -1,0 +1,269 @@
+{
+  "$schema": "./home-living.schema.json",
+  "theme": "home-living",
+  "version": "3.1.0-dedup-round2",
+  "phase": 3,
+  "notes": [
+    "Round-2 dedup: SKUs that share imagery within Phase-2-expanded product lines.",
+    "Each entry generates a unique studio + scene so category-page cards stop showing identical images.",
+    "Reuses camera_conventions and anchors from home-living.json."
+  ],
+  "products": {
+    "DRX-HL-BED-005": {
+      "name": "Bed Stockholm - Mid-Century Queen",
+      "tier": "A",
+      "category": "bedroom/beds",
+      "camera_category": "bed",
+      "studio": {
+        "filename": "bed-stockholm-005-alt.jpg",
+        "prompt": "A queen-size mid-century bed frame with a tall slatted walnut headboard, splayed walnut tapered legs, and a slim oak side rail. No mattress, just the frame. Period mid-century silhouette, warm-walnut wood tones."
+      },
+      "scenes": [
+        {
+          "filename": "bed-stockholm-005-scene-bedroom-001.jpg",
+          "prompt": "Place this exact piece in a serene scandinavian bedroom with crisp white linen bedding, light oak flooring, sheer linen curtains diffusing soft daylight. Walls in pale warm white. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-BED-006": {
+      "name": "Bed Stockholm - King XL",
+      "tier": "A",
+      "category": "bedroom/beds",
+      "camera_category": "bed",
+      "studio": {
+        "filename": "bed-stockholm-006-alt.jpg",
+        "prompt": "A king-XL upholstered bed with a low platform base in solid oak, a wide tufted boucle headboard in soft cream, and built-in storage drawers in the base. No mattress, just the frame."
+      },
+      "scenes": [
+        {
+          "filename": "bed-stockholm-006-scene-bedroom-001.jpg",
+          "prompt": "Place this exact piece in a serene scandinavian bedroom with crisp white linen bedding, light oak flooring, sheer linen curtains diffusing soft daylight. Walls in pale warm white. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-DT-005": {
+      "name": "Dining Table Reykjavik - Industrial",
+      "tier": "A",
+      "category": "dining/dining-tables",
+      "camera_category": "dining_table",
+      "studio": {
+        "filename": "dining-table-reykjavik-005-alt.jpg",
+        "prompt": "An industrial dining table with a thick reclaimed-oak rectangular top, square black powder-coated steel hairpin legs. Approximately 200 centimeters long. Worn metal patina, raw wood texture."
+      },
+      "scenes": [
+        {
+          "filename": "dining-table-reykjavik-005-scene-dining-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian dining room with light oak flooring, sheer linen curtains. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-DT-006": {
+      "name": "Dining Table Reykjavik - Standard",
+      "tier": "A",
+      "category": "dining/dining-tables",
+      "camera_category": "dining_table",
+      "studio": {
+        "filename": "dining-table-reykjavik-006-alt.jpg",
+        "prompt": "A scandinavian dining table with a smooth oval oak top, four slim tapered oak legs joined by a low oak stretcher. Seats six. Light oak finish, soft satin sheen."
+      },
+      "scenes": [
+        {
+          "filename": "dining-table-reykjavik-006-scene-dining-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian dining room with light oak flooring, sheer linen curtains. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-LC-003": {
+      "name": "Lounge Chair Aarhus - Mid-Century",
+      "tier": "A",
+      "category": "living-room/lounge-chairs",
+      "camera_category": "lounge_chair",
+      "studio": {
+        "filename": "lounge-aarhus-003-alt.jpg",
+        "prompt": "A mid-century lounge chair with a curved oak frame, a low backrest, and a tufted boucle seat cushion in soft beige. Splayed walnut legs."
+      },
+      "scenes": [
+        {
+          "filename": "lounge-aarhus-003-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-LC-004": {
+      "name": "Lounge Chair Aarhus - Leather Premium",
+      "tier": "A",
+      "category": "living-room/lounge-chairs",
+      "camera_category": "lounge_chair",
+      "studio": {
+        "filename": "lounge-aarhus-004-alt.jpg",
+        "prompt": "A premium leather lounge chair with a deep tufted seat and back in chocolate-brown leather, a polished steel four-star swivel base. Modern executive silhouette."
+      },
+      "scenes": [
+        {
+          "filename": "lounge-aarhus-004-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-MIR-002": {
+      "name": "Mirror Aalborg - Large",
+      "tier": "A",
+      "category": "decor/mirrors",
+      "camera_category": "wall_mirror",
+      "studio": {
+        "filename": "mirror-aalborg-002-alt.jpg",
+        "prompt": "A large wall mirror with a rectangular slim solid-oak frame, generous 180-centimeter height. Subtle warm-oak tones, satin finish."
+      },
+      "scenes": [
+        {
+          "filename": "mirror-aalborg-002-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-OG-005": {
+      "name": "Garden Bench Mid-Century",
+      "tier": "A",
+      "category": "outdoor/garden-furniture",
+      "camera_category": "outdoor_set",
+      "studio": {
+        "filename": "outdoor-garden-005-alt.jpg",
+        "prompt": "A mid-century outdoor garden bench with a slatted teak seat, splayed teak legs, and a low backrest. Natural-teak finish, period silhouette."
+      },
+      "scenes": [
+        {
+          "filename": "outdoor-garden-005-scene-garden-001.jpg",
+          "prompt": "Place this exact piece on a stone-paved patio at golden hour, lush green foliage in the defocused background. Photorealistic exterior photography, twilight tones, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-OG-007": {
+      "name": "Garden Bench Industrial",
+      "tier": "A",
+      "category": "outdoor/garden-furniture",
+      "camera_category": "outdoor_set",
+      "studio": {
+        "filename": "outdoor-garden-007-alt.jpg",
+        "prompt": "An industrial outdoor garden bench with a black powder-coated steel frame and a slatted reclaimed-wood seat, square legs. Raw industrial silhouette."
+      },
+      "scenes": [
+        {
+          "filename": "outdoor-garden-007-scene-garden-001.jpg",
+          "prompt": "Place this exact piece on a stone-paved patio at golden hour, lush green foliage in the defocused background. Photorealistic exterior photography, twilight tones, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-SOFA-002": {
+      "name": "Sofa Curved - Mid-Century",
+      "tier": "A",
+      "category": "living-room/sofas-couches",
+      "camera_category": "sofa",
+      "studio": {
+        "filename": "sofa-curved-002-alt.jpg",
+        "prompt": "A mid-century curved sofa with a softly curved silhouette, upholstered in deep forest-green velvet, low button-tufted back, splayed walnut legs. Three-seat configuration."
+      },
+      "scenes": [
+        {
+          "filename": "sofa-curved-002-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-TL-005": {
+      "name": "Table Lamp Bergen - Compact",
+      "tier": "A",
+      "category": "lighting/table-lamps",
+      "camera_category": "table_lamp",
+      "studio": {
+        "filename": "table-lamp-bergen-005-alt.jpg",
+        "prompt": "A compact modern table lamp with a small turned-walnut base and a narrow cylindrical fabric drum shade in soft cream. Slim brass stem, sub-30-centimeter height."
+      },
+      "scenes": [
+        {
+          "filename": "table-lamp-bergen-005-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-TL-006": {
+      "name": "Table Lamp Bergen - Modern Ceramic",
+      "tier": "A",
+      "category": "lighting/table-lamps",
+      "camera_category": "table_lamp",
+      "studio": {
+        "filename": "table-lamp-bergen-006-alt.jpg",
+        "prompt": "A modern table lamp with a sculptural matte-glazed ceramic base in dusty pink and a wide drum shade in oat linen. Subtle textured finish, warm-toned ceramics."
+      },
+      "scenes": [
+        {
+          "filename": "table-lamp-bergen-006-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-VAS-004": {
+      "name": "Vase Tampere - XL",
+      "tier": "A",
+      "category": "decor/vases",
+      "camera_category": "vase_or_decor_object",
+      "studio": {
+        "filename": "vase-tampere-004-alt.jpg",
+        "prompt": "An extra-large floor vase, approximately 80 centimeters tall, in textured matte sandstone-brown ceramic with a wide round belly and a narrow neck."
+      },
+      "scenes": [
+        {
+          "filename": "vase-tampere-004-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-VAS-008": {
+      "name": "Vase Tampere - Modern",
+      "tier": "A",
+      "category": "decor/vases",
+      "camera_category": "vase_or_decor_object",
+      "studio": {
+        "filename": "vase-tampere-008-alt.jpg",
+        "prompt": "A modern asymmetric vase with a slim curved silhouette in glossy white ceramic, narrow at the base widening to a flared rim. Sculptural minimalist form, approximately 35 centimeters tall."
+      },
+      "scenes": [
+        {
+          "filename": "vase-tampere-008-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-WA-005": {
+      "name": "Wall Art Trio - Industrial",
+      "tier": "A",
+      "category": "decor/wall-art",
+      "camera_category": "wall_art_trio",
+      "studio": {
+        "filename": "wall-art-trio-005-alt.jpg",
+        "prompt": "A trio of industrial-style abstract architectural prints in muted black-and-white tones, framed in slim matte-black metal frames, hung side by side at equal spacing."
+      },
+      "scenes": [
+        {
+          "filename": "wall-art-trio-005-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    },
+    "DRX-HL-WA-006": {
+      "name": "Wall Art Trio - Scandinavian",
+      "tier": "A",
+      "category": "decor/wall-art",
+      "camera_category": "wall_art_trio",
+      "studio": {
+        "filename": "wall-art-trio-006-alt.jpg",
+        "prompt": "A trio of scandinavian-style botanical line-drawing prints on cream paper, framed in slim natural-oak wood frames, hung side by side at equal spacing."
+      },
+      "scenes": [
+        {
+          "filename": "wall-art-trio-006-scene-living-001.jpg",
+          "prompt": "Place this exact piece in a sun-drenched scandinavian living room, light oak flooring, a soft beige boucle armchair visible behind, sheer linen curtains diffusing soft daylight. Photorealistic interior photography, scandinavian aesthetic, magazine-quality composition."
+        }
+      ]
+    }
+  }
+}

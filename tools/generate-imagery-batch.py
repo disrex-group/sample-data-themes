@@ -50,6 +50,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PRIMARY = ROOT / 'tools' / 'image-prompts' / 'home-living.json'
 MANIFEST_PHASE2 = ROOT / 'tools' / 'image-prompts' / 'home-living-phase2.json'
 MANIFEST_DEDUP = ROOT / 'tools' / 'image-prompts' / 'home-living-dedup.json'
+MANIFEST_DEDUP2 = ROOT / 'tools' / 'image-prompts' / 'home-living-dedup-round2.json'
 IMAGES_DIR = ROOT / 'packages' / 'theme-home-living-media' / '_files' / 'images'
 SCENES_DIR = ROOT / 'packages' / 'theme-home-living-media' / '_files' / 'scenes'
 
@@ -97,6 +98,10 @@ def load_manifests() -> tuple[dict[str, Any], dict[str, Any]]:
         dedup = json.loads(MANIFEST_DEDUP.read_text())
         for sku, entry in dedup.get('products', {}).items():
             products[f'{sku}::dedup'] = entry
+    if MANIFEST_DEDUP2.exists():
+        dedup2 = json.loads(MANIFEST_DEDUP2.read_text())
+        for sku, entry in dedup2.get('products', {}).items():
+            products[f'{sku}::dedup2'] = entry
     return anchors_conv, products
 
 
