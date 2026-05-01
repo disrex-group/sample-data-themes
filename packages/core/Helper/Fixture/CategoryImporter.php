@@ -8,6 +8,8 @@ use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Catalog\Api\Data\CategoryInterface;
 use Magento\Catalog\Api\Data\CategoryInterfaceFactory;
 use Magento\Catalog\Model\CategoryFactory;
+use Magento\Eav\Model\Config as EavConfig;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\NoSuchEntityException;
 
 /**
@@ -30,7 +32,9 @@ class CategoryImporter
     public function __construct(
         private readonly CategoryRepositoryInterface $categoryRepository,
         private readonly CategoryInterfaceFactory $categoryFactory,
-        private readonly CategoryFactory $modelFactory
+        private readonly CategoryFactory $modelFactory,
+        private readonly ResourceConnection $resourceConnection,
+        private readonly EavConfig $eavConfig
     ) {
     }
 
@@ -211,25 +215,48 @@ class CategoryImporter
         }
     }
 
+    /**
+     * Find an existing direct child of $parentId whose url_key matches.
+     *
+     * Implementation note: we query catalog_category_entity_varchar
+     * directly instead of going through `Category::getChildrenCategories()`.
+     * The repository-loaded parent's children collection turned out to
+     * miss recently-created or repository-cached siblings on subsequent
+     * deploys, so the importer would treat existing categories as
+     * "missing" and create duplicates — every redeploy doubled the
+     * tree. A direct EAV lookup is both faster and authoritative: it
+     * sees whatever is actually in the DB right now, including
+     * categories created earlier in this same fixture run.
+     */
     private function findChildByUrlKey(int $parentId, string $urlKey): ?CategoryInterface
     {
+        $conn = $this->resourceConnection->getConnection();
+        $entityTbl = $this->resourceConnection->getTableName('catalog_category_entity');
+        $varcharTbl = $this->resourceConnection->getTableName('catalog_category_entity_varchar');
+        $urlKeyAttr = $this->eavConfig->getAttribute('catalog_category', 'url_key');
+
+        $select = $conn->select()
+            ->from(['e' => $entityTbl], ['entity_id'])
+            ->joinInner(
+                ['v' => $varcharTbl],
+                'v.entity_id = e.entity_id'
+                . ' AND v.attribute_id = ' . (int) $urlKeyAttr->getAttributeId()
+                . ' AND v.store_id = 0',
+                []
+            )
+            ->where('e.parent_id = ?', $parentId)
+            ->where('v.value = ?', $urlKey)
+            ->limit(1);
+
+        $childId = $conn->fetchOne($select);
+        if (!$childId) {
+            return null;
+        }
         try {
-            $parent = $this->categoryRepository->get($parentId);
+            return $this->categoryRepository->get((int) $childId);
         } catch (NoSuchEntityException) {
             return null;
         }
-        $children = $parent->getChildrenCategories();
-        if (!$children) {
-            return null;
-        }
-        foreach ($children as $child) {
-            if ($child->getUrlKey() === $urlKey) {
-                /** @var CategoryInterface $loaded */
-                $loaded = $this->categoryRepository->get((int) $child->getId());
-                return $loaded;
-            }
-        }
-        return null;
     }
 
     /**
