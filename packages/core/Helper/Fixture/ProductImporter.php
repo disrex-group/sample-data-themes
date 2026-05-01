@@ -249,6 +249,27 @@ class ProductImporter
             $cleared += count($orphanIds);
         }
 
+        // 3. Stale category rewrites whose request_path collides with a
+        //    category we're about to re-save. The category fixture
+        //    regenerates rewrites from each category's url_key on save,
+        //    so it's safe to wipe ALL category rewrites here — anything
+        //    we delete will reappear within seconds. Without this step,
+        //    a re-deploy with the same url_keys but different entity_ids
+        //    (e.g. after a partial-failure run that re-created some
+        //    categories) hits "URL key for specified store already
+        //    exists" because the old request_path is still bound to a
+        //    different entity_id. Catalog products use this same idiom
+        //    via PrimaryLocalePromoter; categories now match.
+        $stale = $connection->fetchCol(
+            $connection->select()
+                ->from($urlRewrite, 'url_rewrite_id')
+                ->where('entity_type = ?', 'category')
+        );
+        if ($stale !== []) {
+            $connection->delete($urlRewrite, ['url_rewrite_id IN (?)' => $stale]);
+            $cleared += count($stale);
+        }
+
         return $cleared;
     }
 
