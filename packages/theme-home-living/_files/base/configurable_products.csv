@@ -1,5 +1,5 @@
 sku,attribute_set,price,visibility,status,categories,configurable_attributes,images
-DRX-HL-SOFA-HEL,furniture,899.00,4,1,living-room/sofas-couches,"color_family,fabric",
+DRX-HL-SOFA-HEL,furniture,899.00,4,1,living-room/sofas-couches,"color_family,fabric","sofa-helsinki-grey-linen-001.jpg,sofa-helsinki-scene-living-001.jpg,sofa-helsinki-scene-detail-002.jpg"
 DRX-HL-SOFA-OSL,furniture,1199.00,4,1,living-room/sofas-couches,color_family,"sofa-oslo-beige-001.jpg,sofa-oslo-scene-living-001.jpg,sofa-oslo-scene-detail-002.jpg"
 DRX-HL-LC-AAR,furniture,449.00,4,1,living-room/lounge-chairs,fabric,"lounge-aarhus-leather-001.jpg,lounge-aarhus-scene-reading-001.jpg,lounge-aarhus-scene-detail-002.jpg"
 DRX-HL-DC-CHA,furniture,119.00,4,1,dining/dining-chairs,color_family,"dining-chair-charlottenborg-black-001.jpg,dining-chair-charlottenborg-scene-dining-001.jpg,dining-chair-charlottenborg-scene-detail-002.jpg"
