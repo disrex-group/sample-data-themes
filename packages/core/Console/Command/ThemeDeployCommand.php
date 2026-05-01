@@ -220,9 +220,18 @@ class ThemeDeployCommand extends Command
     /**
      * Refresh the indexers that surface fixture data (image attributes,
      * category links, prices, stock, search) so the admin grid and
-     * storefront see the new products immediately. Failures here don't
-     * abort the deploy — fixtures already landed; the user can re-run
-     * `bin/magento indexer:reindex` if needed.
+     * storefront see the new products immediately.
+     *
+     * On installs whose indexers are in "Update by Schedule" mode, a
+     * straight `reindexAll()` call sometimes short-circuits if the indexer
+     * already considers itself valid (e.g. it ran during a fixture save
+     * before the locale promotion overlaid new EAV rows). Invalidating
+     * each indexer first guarantees the rebuild actually runs and emits
+     * row counts, which is what the operator expects to see after a
+     * deploy.
+     *
+     * Failures here don't abort the deploy — fixtures already landed; the
+     * operator can re-run `bin/magento indexer:reindex` if needed.
      */
     private function reindexCatalog(OutputInterface $output): void
     {
@@ -231,6 +240,7 @@ class ThemeDeployCommand extends Command
         foreach (self::POST_DEPLOY_INDEXERS as $code) {
             try {
                 $indexer = $this->indexerRegistry->get($code);
+                $indexer->invalidate();
                 $indexer->reindexAll();
                 $output->writeln(sprintf('  <info>✓</info> %s', $code));
             } catch (\Throwable $e) {
