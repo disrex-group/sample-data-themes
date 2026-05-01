@@ -92,19 +92,22 @@ class PrimaryLocalePromoter
         // First storeview wins when a locale spans more than one (e.g.
         // nl_NL on a `nl` store and a `be_nl` store).
         $sourceStoreId = (int) $sourceStoreIds[0];
-        if ($sourceStoreId === $targetStoreId) {
-            return PromoteResult::skipped(sprintf(
-                'Locale "%s" is already on the default storeview (id %d).',
-                $locale,
-                $targetStoreId
-            ));
-        }
+
+        // When source == target, the EAV overlay would be a self-copy
+        // no-op (every row's source value is already its target value).
+        // But the rewrite table can still be stale from a prior deploy:
+        // category rewrites generated *during* fixture import use whatever
+        // url_key was in admin scope at that moment, and a re-deploy
+        // doesn't refresh them. So we always re-run the rewrite step,
+        // even on the skip path, so the storefront URLs stay in sync
+        // with the latest CSV-driven url_keys.
+        $skipOverlay = ($sourceStoreId === $targetStoreId);
 
         $this->writeLocaleConfig($locale, $targetStoreId);
-        $rows = $this->overlayProducts($sourceStoreId, $targetStoreId, $skuPrefix);
-        $catRows = $this->overlayCategories($sourceStoreId, $targetStoreId);
-        $optRows = $this->overlayAttributeOptions($sourceStoreId, $targetStoreId);
-        $labelRows = $this->overlayAttributeLabels($sourceStoreId, $targetStoreId);
+        $rows = $skipOverlay ? 0 : $this->overlayProducts($sourceStoreId, $targetStoreId, $skuPrefix);
+        $catRows = $skipOverlay ? 0 : $this->overlayCategories($sourceStoreId, $targetStoreId);
+        $optRows = $skipOverlay ? 0 : $this->overlayAttributeOptions($sourceStoreId, $targetStoreId);
+        $labelRows = $skipOverlay ? 0 : $this->overlayAttributeLabels($sourceStoreId, $targetStoreId);
         [$catRewrites, $productRewrites] = $this->regenerateRewrites($targetStoreId, $skuPrefix);
 
         $this->cacheTypeList->cleanType('config');
