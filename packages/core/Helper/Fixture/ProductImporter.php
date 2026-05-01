@@ -60,7 +60,8 @@ class ProductImporter
         private readonly ImageContentInterfaceFactory $imageContentFactory,
         private readonly ModuleDirReader $moduleDirReader,
         private readonly LoggerInterface $logger,
-        private readonly ProductActionResource $productActionResource
+        private readonly ProductActionResource $productActionResource,
+        private readonly CustomOptionsParser $customOptionsParser
     ) {
     }
 
@@ -112,6 +113,18 @@ class ProductImporter
         if (isset($row['categories']) && $row['categories'] !== '') {
             $paths = array_filter(array_map('trim', explode(',', $row['categories'])));
             $product->setCategoryIds($this->categoryImporter->resolvePathsToIds($paths));
+        }
+
+        // Custom options attach BEFORE save so the option rows land
+        // atomically with the product. Used by virtual products
+        // (giftcards) and personalisable simples (engraved mirrors etc).
+        if (!empty($row['custom_options'])) {
+            $options = $this->customOptionsParser->parse($sku, (string) $row['custom_options']);
+            if ($options !== []) {
+                $product->setOptions($options);
+                $product->setHasOptions(true);
+                $product->setCanSaveCustomOptions(true);
+            }
         }
 
         $product = $this->productRepository->save($product);
@@ -340,6 +353,9 @@ class ProductImporter
             // attributes — they describe the parent / variant relationship
             // and the configurable axis declaration.
             'parent_sku', 'child_sku', 'configurable_attributes', 'associated_skus', 'options',
+            // Virtual products with personalisable options (giftcards etc).
+            // Parsed separately and attached via $product->setOptions().
+            'custom_options',
         ];
 
         foreach ($row as $key => $value) {

@@ -12,6 +12,7 @@ use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\ConfigurableProductFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\GroupedProductFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\ProductLinksFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\SimpleProductFixture;
+use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\VirtualProductFixture;
 use Disrex\SampleDataThemesCore\Model\Theme\AbstractTheme;
 
 /**
@@ -39,6 +40,7 @@ class Theme extends AbstractTheme
         AttributeSetFixture::class,
         CategoryFixture::class,
         SimpleProductFixture::class,
+        VirtualProductFixture::class,
         ConfigurableProductFixture::class,
         GroupedProductFixture::class,
         BundleProductFixture::class,

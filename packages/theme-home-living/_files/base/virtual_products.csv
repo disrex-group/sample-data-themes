@@ -1,0 +1,6 @@
+sku,type_id,attribute_set,price,qty,visibility,status,categories,material,style,room,dimensions,weight_capacity,weight,images,custom_options
+DRX-HL-GC-025,virtual,decor,25.00,9999,4,1,decor/cadeaubonnen,,scandinavian,,,,,giftcard-001.jpg,Recipient Name|field|1|60||Message|area|0|255||Delivery Date|date|0
+DRX-HL-GC-050,virtual,decor,50.00,9999,4,1,decor/cadeaubonnen,,scandinavian,,,,,giftcard-001.jpg,Recipient Name|field|1|60||Message|area|0|255||Delivery Date|date|0
+DRX-HL-GC-100,virtual,decor,100.00,9999,4,1,decor/cadeaubonnen,,scandinavian,,,,,giftcard-001.jpg,Recipient Name|field|1|60||Message|area|0|255||Delivery Date|date|0
+DRX-HL-GC-250,virtual,decor,250.00,9999,4,1,decor/cadeaubonnen,,scandinavian,,,,,giftcard-001.jpg,Recipient Name|field|1|60||Message|area|0|255||Delivery Date|date|0
+DRX-HL-GC-500,virtual,decor,500.00,9999,4,1,decor/cadeaubonnen,,scandinavian,,,,,giftcard-001.jpg,Recipient Name|field|1|60||Message|area|0|255||Delivery Date|date|0
