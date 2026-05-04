@@ -185,5 +185,4 @@ class ConfigurableProductBuilder
         }
         return $children;
     }
-
 }

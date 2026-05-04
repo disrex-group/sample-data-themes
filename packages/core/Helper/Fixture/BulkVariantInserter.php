@@ -113,7 +113,9 @@ class BulkVariantInserter
         $rows = [];
         foreach ($variants as $v) {
             $entityId = $skuToId[$v['sku']] ?? null;
-            if (!$entityId) continue;
+            if (!$entityId) {
+                continue;
+            }
             $rows[] = [
                 'attribute_id' => (int) $nameAttr->getAttributeId(),
                 'store_id' => Store::DEFAULT_STORE_ID,
@@ -135,7 +137,9 @@ class BulkVariantInserter
         $axisAttrCache = [];
         foreach ($variants as $v) {
             $entityId = $skuToId[$v['sku']] ?? null;
-            if (!$entityId) continue;
+            if (!$entityId) {
+                continue;
+            }
             $eid = (int) $entityId;
 
             $intRows[] = [
@@ -181,7 +185,9 @@ class BulkVariantInserter
         $decRows = [];
         foreach ($variants as $v) {
             $entityId = $skuToId[$v['sku']] ?? null;
-            if (!$entityId) continue;
+            if (!$entityId) {
+                continue;
+            }
             $decRows[] = [
                 'attribute_id' => (int) $priceAttr->getAttributeId(),
                 'store_id' => Store::DEFAULT_STORE_ID,
@@ -198,7 +204,9 @@ class BulkVariantInserter
         $wsRows = [];
         foreach ($variants as $v) {
             $entityId = $skuToId[$v['sku']] ?? null;
-            if (!$entityId) continue;
+            if (!$entityId) {
+                continue;
+            }
             foreach ($v['website_ids'] as $wid) {
                 $wsRows[] = [
                     'product_id' => (int) $entityId,
@@ -218,7 +226,9 @@ class BulkVariantInserter
         $stockRows = [];
         foreach ($variants as $v) {
             $entityId = $skuToId[$v['sku']] ?? null;
-            if (!$entityId) continue;
+            if (!$entityId) {
+                continue;
+            }
             $stockRows[] = [
                 'product_id' => (int) $entityId,
                 'stock_id' => 1,

@@ -23,6 +23,40 @@ namespace Magento\Framework {
     }
 }
 
+namespace Magento\Framework\App\Cache {
+    if (!interface_exists(TypeListInterface::class)) {
+        interface TypeListInterface
+        {
+            public function getTypes();
+
+            public function getInvalidated();
+
+            public function cleanType($typeCode);
+
+            public function invalidate($typeCode);
+        }
+    }
+}
+
+namespace Magento\Eav\Model {
+    if (!class_exists(Config::class)) {
+        class Config
+        {
+            public function getAttribute($entityType, $code)
+            {
+            }
+
+            public function getEntityType($code)
+            {
+            }
+
+            public function clear()
+            {
+            }
+        }
+    }
+}
+
 namespace Magento\Framework\App\Config {
     if (!interface_exists(ScopeConfigInterface::class)) {
         interface ScopeConfigInterface

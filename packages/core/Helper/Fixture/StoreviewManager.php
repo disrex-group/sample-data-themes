@@ -116,7 +116,12 @@ class StoreviewManager
         foreach ($storeIds as $storeId) {
             $touched = $this->writeIfChanged(self::CONFIG_LOCALE, $locale, 'stores', (int) $storeId) || $touched;
             if ($currency !== null) {
-                $touched = $this->writeIfChanged(self::CONFIG_CURRENCY_DEFAULT, $currency, 'stores', (int) $storeId) || $touched;
+                $touched = $this->writeIfChanged(
+                    self::CONFIG_CURRENCY_DEFAULT,
+                    $currency,
+                    'stores',
+                    (int) $storeId
+                ) || $touched;
             }
         }
 
@@ -125,7 +130,12 @@ class StoreviewManager
         if ($currency !== null) {
             $websiteIds = $this->websiteIdsForStores($storeIds);
             foreach ($websiteIds as $websiteId) {
-                $touched = $this->writeIfChanged(self::CONFIG_CURRENCY_BASE, $currency, 'websites', $websiteId) || $touched;
+                $touched = $this->writeIfChanged(
+                    self::CONFIG_CURRENCY_BASE,
+                    $currency,
+                    'websites',
+                    $websiteId
+                ) || $touched;
                 $existingAllow = $this->existingAllowList($websiteId);
                 if (!in_array($currency, $existingAllow, true)) {
                     $existingAllow[] = $currency;

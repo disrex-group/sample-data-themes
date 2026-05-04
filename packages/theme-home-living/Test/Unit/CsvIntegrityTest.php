@@ -77,8 +77,8 @@ final class CsvIntegrityTest extends TestCase
             false
         );
 
-        self::assertCount(18, $simple);
-        self::assertCount(6, $configurable);
+        self::assertCount(110, $simple);
+        self::assertCount(210, $configurable);
         self::assertCount(2, $grouped);
         self::assertCount(2, $bundle);
     }
@@ -107,7 +107,8 @@ final class CsvIntegrityTest extends TestCase
             $this->parser->extractColumn($this->filesDir . '/base/configurable_products.csv', 'sku'),
             $this->parser->extractColumn($this->filesDir . '/base/configurable_variations.csv', 'child_sku'),
             $this->parser->extractColumn($this->filesDir . '/base/grouped_products.csv', 'sku'),
-            $this->parser->extractColumn($this->filesDir . '/base/bundle_products.csv', 'sku')
+            $this->parser->extractColumn($this->filesDir . '/base/bundle_products.csv', 'sku'),
+            $this->parser->extractColumn($this->filesDir . '/base/virtual_products.csv', 'sku')
         ));
 
         foreach ($this->parser->parse($this->filesDir . '/base/product_links.csv') as $row) {

@@ -98,7 +98,7 @@ class GroupedProductBuilder
         );
 
         $childSkus = array_map(
-            static fn (array $a): string => trim((string) ($a['sku'] ?? '')),
+            static fn (array $a): string => trim((string) $a['sku']),
             $associations
         );
         $this->inheritImageFromChild(
