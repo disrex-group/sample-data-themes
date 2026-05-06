@@ -63,16 +63,24 @@ else
     echo "  CHANGELOG.md unchanged — skipping commit."
 fi
 
-# ---- 4. Tag and push --------------------------------------------------------
-echo "› Tagging $VERSION at HEAD…"
-git tag -a "$VERSION" -m "Release $VERSION"
-git push origin "$VERSION"
-
-# ---- 5. Generate just-this-version notes for the GitHub release ------------
+# ---- 4. Generate release notes (BEFORE tagging) ----------------------------
+# git-cliff's `--unreleased` reads commits past the latest tag. If we tag
+# first, those commits become "released" and the notes come back empty.
 NOTES_FILE=$(mktemp)
 trap 'rm -f "$NOTES_FILE"' EXIT
 git cliff --config cliff.toml --tag "$VERSION" --unreleased --strip header \
     > "$NOTES_FILE"
+if [ ! -s "$NOTES_FILE" ]; then
+    echo "✗ Generated release notes are empty — aborting before tagging." >&2
+    exit 1
+fi
+echo "› Release notes preview:"
+sed 's/^/    /' "$NOTES_FILE"
+
+# ---- 5. Tag and push --------------------------------------------------------
+echo "› Tagging $VERSION at HEAD…"
+git tag -a "$VERSION" -m "Release $VERSION"
+git push origin "$VERSION"
 
 # ---- 6. Create the draft release -------------------------------------------
 echo "› Creating draft release…"

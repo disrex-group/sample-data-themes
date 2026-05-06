@@ -72,14 +72,21 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Generate release notes (just the new version's section)
+      - name: Generate release notes (BEFORE tagging)
         id: notes
+        # Order matters: git-cliff's `--unreleased` selects commits past
+        # the latest tag, so this MUST run before we create the new tag —
+        # otherwise the new tag becomes "the latest" and the body is empty.
         run: |
           git cliff --config cliff.toml \
               --tag "${{ steps.version.outputs.version }}" \
               --unreleased \
               --strip header \
               --output /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "::error::Generated release notes are empty"
+            exit 1
+          fi
           echo "Generated notes:"
           cat /tmp/release-notes.md
           echo ""
