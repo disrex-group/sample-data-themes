@@ -158,6 +158,15 @@ class ProductReviewsFixture implements FixtureInterface
             return;
         }
 
+        // Make sure every product-entity rating dimension is active and
+        // mapped to every store this theme touches. Without this,
+        // Magento's review aggregator silently drops votes on
+        // unmapped ratings (e.g. on a stock install Quality/Value/Price
+        // exist but aren't mapped past store 0), so PDPs render
+        // rating_summary=0 even though votes were inserted.
+        $allStoreIds = array_unique(array_merge(...array_values($localeStores)));
+        $this->reviewer->ensureRatingsAssignedToStores($allStoreIds);
+
         $skus = $this->fetchVisibleProductSkus();
         $generated = 0;
         $skipped = 0;

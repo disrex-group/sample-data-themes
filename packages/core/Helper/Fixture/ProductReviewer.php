@@ -156,6 +156,59 @@ class ProductReviewer
         );
     }
 
+    /**
+     * Ensure every product-entity rating is visible on the given store
+     * ids. Magento's review aggregator only counts votes on ratings that
+     * are mapped via `rating_store` for the target storeview — without
+     * this step, only the stock "Rating" dimension (which ships
+     * pre-mapped to admin + the default storeview) ends up reflected
+     * on the storefront, while custom ratings like Quality/Value/Price
+     * insert votes that never aggregate.
+     *
+     * Idempotent: uses INSERT IGNORE, so existing mappings are
+     * untouched.
+     *
+     * @param array<int, int> $storeIds
+     */
+    public function ensureRatingsAssignedToStores(array $storeIds): void
+    {
+        if ($storeIds === []) {
+            return;
+        }
+        $conn = $this->resource->getConnection();
+        $ratings = $this->loadRatingsForEntity('product');
+        if ($ratings === []) {
+            return;
+        }
+        // Always include store_id=0 (admin / default scope) — the
+        // Magento aggregator joins through it for fall-through.
+        $allStores = array_unique(array_merge([0], array_map('intval', $storeIds)));
+
+        $rows = [];
+        foreach ($ratings as $rating) {
+            foreach ($allStores as $storeId) {
+                $rows[] = [
+                    'rating_id' => (int) $rating['rating_id'],
+                    'store_id' => $storeId,
+                ];
+            }
+        }
+        $conn->insertOnDuplicate(
+            $this->resource->getTableName('rating_store'),
+            $rows,
+            ['store_id']
+        );
+
+        // The `rating` table has an `is_active` flag that the storefront
+        // also checks. Ensure every product-entity rating is active.
+        $ratingIds = array_map(static fn ($r) => (int) $r['rating_id'], $ratings);
+        $conn->update(
+            $this->resource->getTableName('rating'),
+            ['is_active' => 1],
+            ['rating_id IN (?)' => $ratingIds]
+        );
+    }
+
     private function findOptionIdForStars(int $ratingId, int $stars): ?int
     {
         $conn = $this->resource->getConnection();
