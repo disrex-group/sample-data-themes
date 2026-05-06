@@ -11,6 +11,7 @@ use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\CategoryFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\ConfigurableProductFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\GroupedProductFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\ProductLinksFixture;
+use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\ProductReviewsFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\SimpleProductFixture;
 use Disrex\SampleDataThemeHomeLiving\Setup\Fixtures\VirtualProductFixture;
 use Disrex\SampleDataThemesCore\Model\Theme\AbstractTheme;
@@ -45,6 +46,7 @@ class Theme extends AbstractTheme
         GroupedProductFixture::class,
         BundleProductFixture::class,
         ProductLinksFixture::class,
+        ProductReviewsFixture::class,
     ];
 
     protected const LOCALES = ['en_US', 'nl_NL'];
