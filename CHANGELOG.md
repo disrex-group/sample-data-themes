@@ -4,6 +4,16 @@ Theme-based demo data for Magento 2 / MageOS. All notable changes to
 this project are documented here.
 
 
+## [1.0.2](https://github.com/disrex-group/sample-data-themes/compare/v1.0.1..v1.0.2) - 2026-05-06
+
+### 🐛 Bug Fixes
+
+- *(ci)* Packagist ping job reads from secrets OR variables - ([9e19f9c](https://github.com/disrex-group/sample-data-themes/commit/9e19f9c6b18379b189e8a28098961f7a7edd7a92))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Add tools/release.sh for the local CLI release path - ([95f8c4a](https://github.com/disrex-group/sample-data-themes/commit/95f8c4a03679b7a1e4ac955fd9299a2c76b72c07))
+- Two-stage release flow with git-cliff changelog automation - ([3eac1b2](https://github.com/disrex-group/sample-data-themes/commit/3eac1b2434dbf89149a0441ccc1b42f6a5fea37d))
 ## [1.0.1](https://github.com/disrex-group/sample-data-themes/compare/v1.0.0..v1.0.1) - 2026-05-06
 
 ### 🚀 Features
