@@ -1,0 +1,8 @@
+# screenshot — optimised for marketing screenshots / press kits. Keeps
+# the catalog full but pumps every product to 5 stars so the storefront
+# looks pristine in screen captures.
+
+options:
+  ProductReviewsFixture:
+    per-product: 5
+    star-skew: all-five

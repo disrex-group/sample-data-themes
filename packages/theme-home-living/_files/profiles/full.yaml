@@ -1,0 +1,10 @@
+# full — every fixture runs, all reviews/links generated. This matches
+# the default behaviour when you don't pass --profile, and is provided
+# explicitly so users have a recognised "full" baseline to start from.
+
+# (Empty skip / only — every fixture runs.)
+
+options:
+  ProductReviewsFixture:
+    per-product: 2-8
+    star-skew: realistic

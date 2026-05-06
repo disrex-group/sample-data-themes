@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Disrex\SampleDataThemesCore\Model;
 
+use Disrex\SampleDataThemesCore\Api\ConfigurableFixtureInterface;
 use Disrex\SampleDataThemesCore\Api\FixtureInterface;
+use Disrex\SampleDataThemesCore\Api\StateAwareFixtureInterface;
 use Disrex\SampleDataThemesCore\Api\ThemeInterface;
 use Disrex\SampleDataThemesCore\Helper\Fixture\ProductImporter;
+use Disrex\SampleDataThemesCore\Model\ConflictAction;
+use Disrex\SampleDataThemesCore\Model\DeployPlan;
 use Disrex\SampleDataThemesCore\Model\Fixture\AbstractCsvFixture;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Framework\App\Cache\TypeListInterface as CacheTypeList;
@@ -31,8 +35,12 @@ class FixtureRunner
     ) {
     }
 
-    public function run(ThemeInterface $theme, ?OutputInterface $output = null): RunResult
-    {
+    public function run(
+        ThemeInterface $theme,
+        ?OutputInterface $output = null,
+        ?DeployPlan $plan = null
+    ): RunResult {
+        $plan ??= new DeployPlan();
         $result = new RunResult($theme->getCode());
 
         // Magento does not always cascade `url_rewrite` rows when products
@@ -48,9 +56,59 @@ class FixtureRunner
         }
 
         foreach ($theme->getFixtures() as $fixtureClass) {
+            $shortName = $this->shortName($fixtureClass);
+
+            if (!$plan->shouldRun($shortName)) {
+                $output?->writeln(sprintf('  <comment>↷ %s — skipped by plan</comment>', $shortName));
+                $result->addSkipped($fixtureClass, 'skipped by plan');
+                continue;
+            }
+
             $output?->writeln(sprintf('  <comment>→</comment> %s', $fixtureClass));
             try {
                 $fixture = $this->createFixture($fixtureClass);
+
+                // Apply runtime options (reviews-per-product, star skew, …)
+                if ($fixture instanceof ConfigurableFixtureInterface) {
+                    $opts = $plan->optionsFor($shortName);
+                    if ($opts !== []) {
+                        $fixture->configure($opts);
+                    }
+                }
+
+                // Honour the per-fixture conflict action when state is
+                // already present and the fixture can describe its state.
+                if ($fixture instanceof StateAwareFixtureInterface) {
+                    $existing = $fixture->count();
+                    if ($existing > 0) {
+                        $action = $plan->conflictAction($shortName);
+                        if ($action === ConflictAction::Skip) {
+                            $output?->writeln(sprintf(
+                                '    <comment>↷ %d existing — skip per plan</comment>',
+                                $existing
+                            ));
+                            $result->addSkipped(
+                                $fixtureClass,
+                                sprintf('skip: %d existing', $existing)
+                            );
+                            continue;
+                        }
+                        if ($action === ConflictAction::Reset) {
+                            $cleared = $fixture->clear();
+                            $output?->writeln(sprintf(
+                                '    <comment>⟲ cleared %d existing entries before re-run</comment>',
+                                $cleared
+                            ));
+                        }
+                    }
+                }
+
+                if ($plan->dryRun) {
+                    $output?->writeln('    <comment>↷ dry-run — execute() skipped</comment>');
+                    $result->addSkipped($fixtureClass, 'dry-run');
+                    continue;
+                }
+
                 $fixture->execute();
                 // EAV / config caches go stale as soon as a fixture creates
                 // attributes, attribute sets or categories. Invalidate
@@ -74,6 +132,18 @@ class FixtureRunner
         }
 
         return $result;
+    }
+
+    /**
+     * The plan's identifiers are stable short class names, not FQCNs:
+     *   Disrex\…\Setup\Fixtures\SimpleProductFixture → SimpleProductFixture
+     *
+     * Using FQCNs in user-facing flags would tie the public API to an
+     * internal namespace.
+     */
+    public function shortName(string $fixtureClass): string
+    {
+        return basename(str_replace('\\', '/', $fixtureClass));
     }
 
     public function rollback(ThemeInterface $theme, ?OutputInterface $output = null): RunResult

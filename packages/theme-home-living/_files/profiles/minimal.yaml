@@ -1,0 +1,9 @@
+# minimal — small catalog, no reviews, no related products. Useful for
+# quick local checks where you just want a few products on a category
+# page.
+
+skip:
+  - ProductLinksFixture
+  - ProductReviewsFixture
+  - BundleProductFixture
+  - GroupedProductFixture

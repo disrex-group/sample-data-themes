@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Disrex\SampleDataThemeHomeLiving\Setup\Fixtures;
 
 use Disrex\SampleDataThemeHomeLiving\Model\Theme;
+use Disrex\SampleDataThemesCore\Api\ConfigurableFixtureInterface;
 use Disrex\SampleDataThemesCore\Api\FixtureInterface;
+use Disrex\SampleDataThemesCore\Api\StateAwareFixtureInterface;
 use Disrex\SampleDataThemesCore\Helper\Fixture\LocaleResolver;
 use Disrex\SampleDataThemesCore\Helper\Fixture\ProductReviewer;
 use Magento\Framework\App\ResourceConnection;
@@ -25,8 +27,16 @@ use Psr\Log\LoggerInterface;
  *
  * Idempotent: products that already have reviews are skipped on re-run.
  */
-class ProductReviewsFixture implements FixtureInterface
+class ProductReviewsFixture implements
+    FixtureInterface,
+    StateAwareFixtureInterface,
+    ConfigurableFixtureInterface
 {
+    private int $minPerProduct = 2;
+    private int $maxPerProduct = 8;
+    private string $starSkew = 'realistic';
+    private int $seed = self::SEED;
+
     /** Random-seed constant: keeps generated reviews reproducible across deploys. */
     private const SEED = 13373;
 
@@ -170,7 +180,7 @@ class ProductReviewsFixture implements FixtureInterface
         $skus = $this->fetchVisibleProductSkus();
         $generated = 0;
         $skipped = 0;
-        $rng = mt_srand(self::SEED);
+        mt_srand($this->seed);
 
         foreach ($skus as $sku) {
             if ($this->reviewer->hasReviews($sku)) {
@@ -180,7 +190,7 @@ class ProductReviewsFixture implements FixtureInterface
 
             // 2-8 reviews per product. Bias toward 3-5 so most products
             // look "established" without flooding with hundreds of rows.
-            $reviewCount = $this->randomInt(2, 8);
+            $reviewCount = $this->randomInt($this->minPerProduct, $this->maxPerProduct);
 
             // Each review goes to ONE locale's stores so the body text
             // matches what visitors of that storeview will read. The
@@ -255,10 +265,15 @@ class ProductReviewsFixture implements FixtureInterface
 
     private function weightedStarPick(): int
     {
-        $total = array_sum(self::STAR_WEIGHTS);
+        $weights = match ($this->starSkew) {
+            'all-five' => [5 => 1],
+            'random' => [1 => 1, 2 => 1, 3 => 1, 4 => 1, 5 => 1],
+            default => self::STAR_WEIGHTS,
+        };
+        $total = array_sum($weights);
         $r = $this->randomInt(1, $total);
         $running = 0;
-        foreach (self::STAR_WEIGHTS as $stars => $weight) {
+        foreach ($weights as $stars => $weight) {
             $running += $weight;
             if ($r <= $running) {
                 return $stars;
@@ -297,5 +312,130 @@ class ProductReviewsFixture implements FixtureInterface
     private function randomInt(int $min, int $max): int
     {
         return mt_rand($min, $max);
+    }
+
+    // ----- StateAwareFixtureInterface -----------------------------------
+
+    public function count(): int
+    {
+        $conn = $this->resource->getConnection();
+        // Reviews this fixture would emit are "approved-only product
+        // reviews on DRX-HL-* SKUs" — keep the count narrow to that set
+        // so we don't trip on real customer reviews if anyone seeds the
+        // demo and then takes it live.
+        return (int) $conn->fetchOne(
+            $conn->select()
+                ->from(['r' => $this->resource->getTableName('review')], ['cnt' => 'COUNT(*)'])
+                ->joinInner(
+                    ['cpe' => $this->resource->getTableName('catalog_product_entity')],
+                    'cpe.entity_id = r.entity_pk_value',
+                    []
+                )
+                ->where('cpe.sku LIKE ?', $this->theme->getSkuPrefix() . '%')
+                ->where('r.status_id = ?', 1)
+        );
+    }
+
+    public function clear(): int
+    {
+        $conn = $this->resource->getConnection();
+        $reviewIds = $conn->fetchCol(
+            $conn->select()
+                ->from(['r' => $this->resource->getTableName('review')], ['review_id'])
+                ->joinInner(
+                    ['cpe' => $this->resource->getTableName('catalog_product_entity')],
+                    'cpe.entity_id = r.entity_pk_value',
+                    []
+                )
+                ->where('cpe.sku LIKE ?', $this->theme->getSkuPrefix() . '%')
+        );
+        if ($reviewIds === []) {
+            return 0;
+        }
+
+        // Cascade through Magento's review tables manually — the schema
+        // doesn't have FKs everywhere we'd want them.
+        $conn->delete(
+            $this->resource->getTableName('rating_option_vote'),
+            ['review_id IN (?)' => $reviewIds]
+        );
+        $conn->delete(
+            $this->resource->getTableName('rating_option_vote_aggregated'),
+            [
+                'entity_pk_value IN (?)' => $conn->fetchCol(
+                    $conn->select()
+                        ->from(
+                            $this->resource->getTableName('catalog_product_entity'),
+                            ['entity_id']
+                        )
+                        ->where('sku LIKE ?', $this->theme->getSkuPrefix() . '%')
+                ),
+            ]
+        );
+        $conn->delete(
+            $this->resource->getTableName('review_entity_summary'),
+            [
+                'entity_pk_value IN (?)' => $conn->fetchCol(
+                    $conn->select()
+                        ->from(
+                            $this->resource->getTableName('catalog_product_entity'),
+                            ['entity_id']
+                        )
+                        ->where('sku LIKE ?', $this->theme->getSkuPrefix() . '%')
+                ),
+            ]
+        );
+        $deleted = $conn->delete(
+            $this->resource->getTableName('review'),
+            ['review_id IN (?)' => $reviewIds]
+        );
+        return (int) $deleted;
+    }
+
+    // ----- ConfigurableFixtureInterface ---------------------------------
+
+    public function configure(array $options): void
+    {
+        if (isset($options['per-product'])) {
+            // Accept "2-8" range strings as well as ["min" => 2, "max" => 8]
+            // arrays (the latter survives a YAML profile round-trip).
+            if (is_array($options['per-product'])) {
+                $this->minPerProduct = (int) ($options['per-product']['min'] ?? $this->minPerProduct);
+                $this->maxPerProduct = (int) ($options['per-product']['max'] ?? $this->maxPerProduct);
+            } elseif (is_string($options['per-product']) && preg_match('/^(\d+)-(\d+)$/', $options['per-product'], $m)) {
+                $this->minPerProduct = (int) $m[1];
+                $this->maxPerProduct = (int) $m[2];
+            } elseif (is_int($options['per-product']) || ctype_digit((string) $options['per-product'])) {
+                $this->minPerProduct = $this->maxPerProduct = (int) $options['per-product'];
+            }
+        }
+        if (isset($options['star-skew']) && in_array($options['star-skew'], ['realistic', 'all-five', 'random'], true)) {
+            $this->starSkew = (string) $options['star-skew'];
+        }
+        if (isset($options['seed'])) {
+            $this->seed = (int) $options['seed'];
+        }
+    }
+
+    public function describeOptions(): array
+    {
+        return [
+            'per-product' => [
+                'type' => 'range',
+                'default' => '2-8',
+                'description' => 'How many reviews to generate per visible product. Accepts a single int (3) or a range (2-8).',
+            ],
+            'star-skew' => [
+                'type' => 'enum',
+                'enum' => ['realistic', 'all-five', 'random'],
+                'default' => 'realistic',
+                'description' => 'Star-rating distribution. "realistic" weights toward 4-5★ (default); "all-five" makes every review 5★; "random" gives uniform 1-5★.',
+            ],
+            'seed' => [
+                'type' => 'int',
+                'default' => self::SEED,
+                'description' => 'Random seed. Same seed + same catalog produces the same reviews on every run.',
+            ],
+        ];
     }
 }
