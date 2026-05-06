@@ -43,6 +43,11 @@ class SimpleProductFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'simple';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living simple products (18, EN/NL translated)';

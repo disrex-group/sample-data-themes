@@ -47,6 +47,11 @@ class GroupedProductFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'grouped';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living grouped products (2)';

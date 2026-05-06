@@ -46,6 +46,11 @@ class VirtualProductFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'virtual';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living virtual products (giftcards with custom options)';

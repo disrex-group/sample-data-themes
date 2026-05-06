@@ -5,6 +5,6 @@
 # (Empty skip / only — every fixture runs.)
 
 options:
-  ProductReviewsFixture:
+  reviews:
     per-product: 2-8
     star-skew: realistic

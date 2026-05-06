@@ -3,6 +3,6 @@
 # looks pristine in screen captures.
 
 options:
-  ProductReviewsFixture:
+  reviews:
     per-product: 5
     star-skew: all-five

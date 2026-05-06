@@ -35,6 +35,11 @@ class ProductLinksFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'links';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living related/upsell/crosssell links';

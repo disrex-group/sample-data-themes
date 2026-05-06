@@ -12,6 +12,7 @@ use Disrex\SampleDataThemesCore\Helper\Fixture\ProductImporter;
 use Disrex\SampleDataThemesCore\Model\ConflictAction;
 use Disrex\SampleDataThemesCore\Model\DeployPlan;
 use Disrex\SampleDataThemesCore\Model\Fixture\AbstractCsvFixture;
+use Disrex\SampleDataThemesCore\Model\FixtureAliasResolver;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Framework\App\Cache\TypeListInterface as CacheTypeList;
 use Magento\Framework\ObjectManagerInterface;
@@ -143,7 +144,7 @@ class FixtureRunner
      */
     public function shortName(string $fixtureClass): string
     {
-        return basename(str_replace('\\', '/', $fixtureClass));
+        return FixtureAliasResolver::shortNameOf($fixtureClass);
     }
 
     public function rollback(ThemeInterface $theme, ?OutputInterface $output = null): RunResult

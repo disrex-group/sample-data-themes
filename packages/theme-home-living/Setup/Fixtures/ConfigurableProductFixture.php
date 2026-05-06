@@ -46,6 +46,11 @@ class ConfigurableProductFixture implements FixtureInterface
     ) {
     }
 
+    public static function alias(): ?string
+    {
+        return 'configurable';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living configurable products (6, with variants)';

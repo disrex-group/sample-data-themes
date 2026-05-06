@@ -41,6 +41,11 @@ class CategoryFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'categories';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living categories (incl. EN/NL translations)';

@@ -145,6 +145,11 @@ class ProductReviewsFixture implements
     ) {
     }
 
+    public static function alias(): ?string
+    {
+        return 'reviews';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living product reviews (algorithmic, EN/NL)';

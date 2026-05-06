@@ -53,6 +53,11 @@ class BundleProductFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'bundle';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living bundle products (2)';

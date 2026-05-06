@@ -42,6 +42,11 @@ class AttributeFixture extends AbstractCsvFixture
         return 'Disrex_SampleDataThemeHomeLiving';
     }
 
+    public static function alias(): ?string
+    {
+        return 'attributes';
+    }
+
     public function getLabel(): string
     {
         return 'Home & Living attributes (incl. EN/NL translations)';
