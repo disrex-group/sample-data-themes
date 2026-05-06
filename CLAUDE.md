@@ -67,34 +67,50 @@ after a human-reviewed step:
    runs the CI gate, splits to the 3 mirror repos, and Packagist auto-
    pulls the new version.
 
-### Recommended flow (workflow-driven)
+Two equivalent paths to create a release. Both end at the same place:
+a draft GitHub Release that you click **Publish** on to trigger the
+package split + Packagist publish.
+
+### Path A — GitHub UI (workflow_dispatch)
 
 1. Go to **Actions → "Tag & Draft Release" → Run workflow**
-2. Either leave the version field empty (auto-bumps via
-   `git cliff --bumped-version`) or override with `v1.2.0` /
-   `theme-home-living/v1.1.0`
-3. Workflow tags `master`, updates CHANGELOG.md, creates a draft
+2. Leave the version field empty to auto-bump via
+   `git cliff --bumped-version`, or type a specific version
+   (`v1.2.0` / `theme-home-living/v1.1.0`)
+3. Workflow tags `master`, updates `CHANGELOG.md`, creates a draft
    release at github.com/.../releases
-4. Review the draft, edit notes if needed, click **Publish release**
+4. Review the draft → click **Publish release**
 5. `release.yml` fires, splits to mirrors, Packagist publishes
 
-### Local flow (your existing one-liner)
+### Path B — Local CLI (tools/release.sh)
 
+```bash
+# Auto-bump from commits:
+tools/release.sh
+
+# Or pin an explicit version:
+tools/release.sh v1.2.0
+tools/release.sh theme-home-living/v1.1.0
+```
+
+The script does the same work as the workflow:
+- Refuses to run on a dirty tree or against an existing tag
+- Updates `CHANGELOG.md` and commits the bump
+- Pushes master and the annotated tag
+- Generates notes for just the new version
+- Creates a draft GitHub Release
+
+Then review at github.com/.../releases and click **Publish release**.
+
+Underlying one-liner if you'd rather not use the script:
 ```bash
 git tag -a $(git cliff --bumped-version) \
         -m "Release $(git cliff --bumped-version)"
 git push origin "$(git cliff --bumped-version)"
+git cliff --current --strip header | \
+    gh release create $(git describe --tags --abbrev=0) \
+        --draft --notes-file -
 ```
-
-Then create the draft release manually:
-
-```bash
-git cliff --config cliff.toml --current --strip header > /tmp/notes.md
-gh release create $(git cliff --latest --bumped) \
-    --draft --notes-file /tmp/notes.md
-```
-
-Click "Publish" on the draft when ready.
 
 ### Tag conventions
 
