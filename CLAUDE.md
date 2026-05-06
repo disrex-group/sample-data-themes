@@ -156,6 +156,64 @@ composer cs-check && composer analyse && composer test \
     && php tools/theme-validator.php packages/theme-home-living
 ```
 
+## Customising what gets deployed
+
+`sampledata:theme:deploy` is **wizard-first**: running it interactively
+without selection flags drops into a multi-select prompt that asks
+"Run all fixtures? [Y/n]", then walks fixture-by-fixture through
+conflict choices and per-fixture options.
+
+For scripts/CI, the wizard is suppressed automatically (no TTY, or
+`-n` / `--no-interaction`). Curated short aliases identify each
+fixture: `simple`, `configurable`, `bundle`, `grouped`, `virtual`,
+`attributes`, `attribute-sets`, `categories`, `links`, `reviews`.
+
+```bash
+# Fully interactive — common case is one Enter press.
+bin/magento sampledata:theme:deploy --theme=home-living
+
+# Skip slow fixtures while iterating.
+bin/magento sampledata:theme:deploy --theme=home-living \
+    --no-interaction --skip=reviews,bundle
+
+# Run only a subset.
+bin/magento sampledata:theme:deploy --theme=home-living \
+    --no-interaction --only=simple,configurable
+
+# Wipe and regenerate one fixture without touching the rest.
+bin/magento sampledata:theme:deploy --theme=home-living \
+    --no-interaction --only=reviews --reset=reviews
+
+# Per-fixture options as flat top-level flags.
+# Each fixture's alias namespaces its options: `--<alias>-<key>=<value>`.
+bin/magento sampledata:theme:deploy --theme=home-living \
+    --no-interaction \
+    --reviews-per-product=2-5 \
+    --reviews-star-skew=all-five
+
+# Saved YAML preset.
+bin/magento sampledata:theme:deploy --theme=home-living \
+    --profile=screenshot
+
+# Force the wizard even with flags present.
+bin/magento sampledata:theme:deploy --theme=home-living -i
+```
+
+Profiles live at `packages/<theme>/Setup/Fixtures/profiles/<name>.yaml`
+and use the same alias keys:
+
+```yaml
+# packages/theme-home-living/_files/profiles/screenshot.yaml
+options:
+  reviews:
+    per-product: 5
+    star-skew: all-five
+```
+
+The legacy long form (`--skip=ProductReviewsFixture`,
+`--opt=ProductReviewsFixture.per-product=2-5`) still resolves for
+backwards compat but isn't documented.
+
 ## Docker dev environment notes
 
 This repo can be developed standalone (composer + phpunit on the host)
