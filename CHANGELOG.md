@@ -4,11 +4,30 @@ Theme-based demo data for Magento 2 / MageOS. All notable changes to
 this project are documented here.
 
 
+## [1.1.0](https://github.com/disrex-group/sample-data-themes/compare/v1.0.2..v1.1.0) - 2026-05-06
+
+### 🚀 Features
+
+- *(core)* Wizard-first deploy with checkbox UX via laravel/prompts - ([3c405dd](https://github.com/disrex-group/sample-data-themes/commit/3c405ddd20b90170466a1433d3809cd9b2afe772))
+- *(core)* Curated aliases for fixtures (reviews, links, simple, …) - ([928a00c](https://github.com/disrex-group/sample-data-themes/commit/928a00c82ace5e83afc0eeb6346ace0fb91b2634))
+- *(core)* Customizable deploy with per-fixture skip/reset/options - ([1aa8bef](https://github.com/disrex-group/sample-data-themes/commit/1aa8bef95fb84cd45e8d233d9592ef2ee5b02a34))
+
+### 🐛 Bug Fixes
+
+- *(release)* Generate notes BEFORE tagging so the body isn't empty - ([2941a09](https://github.com/disrex-group/sample-data-themes/commit/2941a09c609ef2e408cb183c07047ee64d880b06))
+
+### 📚 Documentation
+
+- *(claude)* Document wizard-first deploy + alias-based flags - ([d2fdeea](https://github.com/disrex-group/sample-data-themes/commit/d2fdeea220d83fc462feed75c9292e38edcfb28a))
 ## [1.0.2](https://github.com/disrex-group/sample-data-themes/compare/v1.0.1..v1.0.2) - 2026-05-06
 
 ### 🐛 Bug Fixes
 
 - *(ci)* Packagist ping job reads from secrets OR variables - ([9e19f9c](https://github.com/disrex-group/sample-data-themes/commit/9e19f9c6b18379b189e8a28098961f7a7edd7a92))
+
+### 📚 Documentation
+
+- *(changelog)* Bump for v1.0.2 - ([7b53e0d](https://github.com/disrex-group/sample-data-themes/commit/7b53e0deaa65417698c6de00f9bcef01be078f8a))
 
 ### ⚙️ Miscellaneous Tasks
 
