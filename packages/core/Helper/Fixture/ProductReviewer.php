@@ -95,14 +95,18 @@ class ProductReviewer
         // Value (3 ratings); custom-attribute installs may have more.
         $ratings = $this->loadRatingsForEntity('product');
         foreach ($ratings as $rating) {
-            $optionId = $this->findOptionIdForStars($rating['rating_id'], $stars);
+            // DB column values come back as strings under most PDO
+            // drivers; cast to int here so findOptionIdForStars and
+            // the rating model both get the type they expect.
+            $ratingId = (int) $rating['rating_id'];
+            $optionId = $this->findOptionIdForStars($ratingId, $stars);
             if ($optionId === null) {
                 continue;
             }
             $ratingModel = $this->ratingFactory->create();
-            $ratingModel->setRatingId((int) $rating['rating_id']);
+            $ratingModel->setRatingId($ratingId);
             $ratingModel->setReviewId((int) $review->getId());
-            $ratingModel->addOptionVote((int) $optionId, (int) $product->getId());
+            $ratingModel->addOptionVote($optionId, (int) $product->getId());
         }
 
         // Aggregate refreshes review_entity_summary — the storefront's
