@@ -1,0 +1,128 @@
+name: Tag & Draft Release
+
+# Bumps the version, tags master, and creates a DRAFT GitHub Release
+# with auto-generated notes from git-cliff. The actual package
+# publication happens later when you click "Publish" on the draft —
+# that fires release.yml.
+#
+# Usage:
+#   1. Manually trigger via GitHub UI: Actions → "Tag & Draft Release"
+#      → "Run workflow"
+#   2. Either accept the auto-bumped version (default) or override it
+#      with a specific value like "v1.2.0" or "core/v0.5.0"
+#   3. Workflow tags master, generates release notes from commits since
+#      the last tag, and creates a draft release
+#   4. Review the draft at github.com/.../releases — edit notes if
+#      needed — click "Publish release"
+#   5. Publishing fires release.yml which splits to mirrors + Packagist
+#
+# Local equivalent (skip the workflow, do it from your machine):
+#   git tag -a $(git cliff --bumped-version) \
+#           -m "Release $(git cliff --bumped-version)"
+#   git push origin "$(git cliff --bumped-version)"
+#   gh release create $(git cliff --bumped-version) \
+#       --draft --generate-notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to tag (leave empty to auto-bump from commits)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-draft:
+    name: Tag and create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.DISREX_BOT_TOKEN }}
+
+      - name: Install git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --version
+        env:
+          OUTPUT: /dev/null
+
+      - name: Determine version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -e
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+            echo "Using user-supplied version: $VERSION"
+          else
+            VERSION=$(git cliff --config cliff.toml --bumped-version)
+            echo "Auto-bumped to: $VERSION"
+          fi
+          # Ensure we never re-tag an existing version
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $VERSION already exists. Pick a higher version."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes (just the new version's section)
+        id: notes
+        run: |
+          git cliff --config cliff.toml \
+              --tag "${{ steps.version.outputs.version }}" \
+              --unreleased \
+              --strip header \
+              --output /tmp/release-notes.md
+          echo "Generated notes:"
+          cat /tmp/release-notes.md
+          echo ""
+          echo "notes_path=/tmp/release-notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        run: |
+          git cliff --config cliff.toml \
+              --tag "${{ steps.version.outputs.version }}" \
+              --output CHANGELOG.md
+          if ! git diff --quiet CHANGELOG.md; then
+            git config user.name 'disrex-bot'
+            git config user.email 'bot@disrex.nl'
+            git add CHANGELOG.md
+            git commit -m "docs(changelog): bump for ${{ steps.version.outputs.version }}"
+            git push origin HEAD:master
+          else
+            echo "CHANGELOG.md unchanged — skipping commit."
+          fi
+
+      - name: Tag and push
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -e
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+      - name: Create draft GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          bodyFile: ${{ steps.notes.outputs.notes_path }}
+          draft: true
+          token: ${{ secrets.DISREX_BOT_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Draft release created" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tag: \`${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Next step:** review the draft at" >> "$GITHUB_STEP_SUMMARY"
+          echo "[github.com/${{ github.repository }}/releases](https://github.com/${{ github.repository }}/releases)" >> "$GITHUB_STEP_SUMMARY"
+          echo "and click **Publish release** to fire the package-split workflow." >> "$GITHUB_STEP_SUMMARY"

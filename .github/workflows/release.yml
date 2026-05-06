@@ -1,15 +1,19 @@
 name: Release
 
-# Tag-driven publishing.
+# Release-driven publishing.
 #
-# Per-package release (recommended):
-#   git tag core/v1.0.0                 -> publishes packages/core
-#   git tag theme-home-living/v1.2.0    -> publishes packages/theme-home-living
+# Triggered by GitHub Release publication (NOT raw tag push). This gives
+# you a human review step: the upstream tag-release workflow creates a
+# DRAFT release with auto-generated notes; you review and click "Publish"
+# to fire this workflow, which then splits packages to their mirrors and
+# publishes them on Packagist.
 #
-# Whole-monorepo release (every package gets the same tag):
-#   git tag v1.0.0
+# Tag conventions (the release's tag_name drives the scope):
+#   v1.0.0                 -> every package gets this version
+#   core/v1.0.0            -> publishes packages/core only
+#   theme-home-living/v1.2.0 -> publishes packages/theme-home-living only
 #
-# What happens on push:
+# What happens on release publish:
 #   1. CI gates re-run on the tagged commit (PHPCS, PHPStan, PHPUnit, theme
 #      validator, composer-validate per package).
 #   2. monorepo-split-action mirrors the affected package(s) into their own
@@ -22,14 +26,12 @@ name: Release
 #                       split mirrors. Used by the split action.
 
 on:
-  push:
-    tags:
-      - '*/v[0-9]+.[0-9]+.[0-9]+*'   # per-package: <package>/vX.Y.Z[-suffix]
-      - 'v[0-9]+.[0-9]+.[0-9]+*'     # all-packages: vX.Y.Z[-suffix]
+  release:
+    types: [published]
 
 # Concurrency: never run two releases against the same tag in parallel.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
@@ -38,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -77,11 +81,13 @@ jobs:
       packages_json: ${{ steps.parse.outputs.packages_json }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Parse tag
         id: parse
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           set -e
           # Tag forms:
@@ -121,6 +127,7 @@ jobs:
         with:
           # monorepo-split-action needs full history to push a clean subtree.
           fetch-depth: 0
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Resolve target repository
         id: target

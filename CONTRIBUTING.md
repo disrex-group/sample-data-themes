@@ -3,6 +3,11 @@
 Thanks for considering a contribution! This project is MIT licensed and
 community-maintained.
 
+> Detailed rules — including conventional-commit format and the
+> two-stage release flow — live in [`CLAUDE.md`](CLAUDE.md). That file
+> is also auto-loaded by Claude Code so AI contributions follow the
+> same playbook.
+
 ## Sign-off
 
 We use the [Developer Certificate of Origin](https://developercertificate.org/)
