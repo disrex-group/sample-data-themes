@@ -65,7 +65,7 @@ fi
 # bumps (X.Y.Z, same MAJOR.MINOR) are no-ops.
 if [[ "$VERSION" =~ ^v?([0-9]+)\.([0-9]+)\.[0-9]+ ]]; then
     NEW_MAJOR_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
-    echo "› Syncing cross-package require constraints to ^$NEW_MAJOR_MINOR…"
+    echo "› Syncing cross-package require constraints to ^${NEW_MAJOR_MINOR}…"
     BUMPED=0
     for pkg_json in packages/*/composer.json; do
         # Skip the core package — only sibling packages need bumping
