@@ -52,7 +52,56 @@ if [ "$CURRENT_BRANCH" != "master" ]; then
     [[ "$REPLY" =~ ^[Yy]$ ]] || exit 1
 fi
 
-# ---- 3. Update CHANGELOG.md ------------------------------------------------
+# ---- 3. Sync cross-package require constraints -----------------------------
+# When core is bumped to a new minor (e.g. v1.1.0), every sibling
+# package whose runtime depends on a feature added in that minor must
+# bump its `disrex/sample-data-themes-core: ^X.Y` constraint to match —
+# otherwise end-users running `composer update` get the new theme +
+# old core, which fails at autoload time.
+#
+# Strategy: parse the new version's MAJOR.MINOR, walk every
+# packages/*/composer.json that requires a sibling disrex/* package,
+# and replace `^X.Y` with the bumped `^MAJOR.MINOR`. Patch-only
+# bumps (X.Y.Z, same MAJOR.MINOR) are no-ops.
+if [[ "$VERSION" =~ ^v?([0-9]+)\.([0-9]+)\.[0-9]+ ]]; then
+    NEW_MAJOR_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+    echo "› Syncing cross-package require constraints to ^$NEW_MAJOR_MINOR…"
+    BUMPED=0
+    for pkg_json in packages/*/composer.json; do
+        # Skip the core package — only sibling packages need bumping
+        if grep -q '"name": "disrex/sample-data-themes-core"' "$pkg_json"; then
+            continue
+        fi
+        # In-place rewrite: any "disrex/sample-data-*": "^N.M" → "^$NEW_MAJOR_MINOR"
+        if grep -qE '"disrex/sample-data-[^"]+": "\^[0-9]+\.[0-9]+"' "$pkg_json"; then
+            python3 -c "
+import json, sys
+path = '$pkg_json'
+new = '^$NEW_MAJOR_MINOR'
+data = json.load(open(path))
+changed = False
+for k, v in data.get('require', {}).items():
+    if k.startswith('disrex/sample-data-') and v.startswith('^') and v != new:
+        data['require'][k] = new
+        changed = True
+        print(f'  {path}: {k} → {new}')
+if changed:
+    json.dump(data, open(path, 'w'), indent=4)
+    open(path, 'a').write('\n')
+"
+            BUMPED=1
+        fi
+    done
+    if [ $BUMPED -eq 1 ] && ! git diff --quiet packages/*/composer.json; then
+        git add packages/*/composer.json
+        git commit -m "chore(deps): bump disrex/* sibling constraints to ^$NEW_MAJOR_MINOR"
+        git push origin "$CURRENT_BRANCH"
+    else
+        echo "  No sibling constraints needed bumping."
+    fi
+fi
+
+# ---- 4. Update CHANGELOG.md ------------------------------------------------
 echo "› Updating CHANGELOG.md…"
 git cliff --config cliff.toml --tag "$VERSION" --output CHANGELOG.md
 if ! git diff --quiet CHANGELOG.md; then
@@ -63,7 +112,7 @@ else
     echo "  CHANGELOG.md unchanged — skipping commit."
 fi
 
-# ---- 4. Generate release notes (BEFORE tagging) ----------------------------
+# ---- 5. Generate release notes (BEFORE tagging) ----------------------------
 # git-cliff's `--unreleased` reads commits past the latest tag. If we tag
 # first, those commits become "released" and the notes come back empty.
 NOTES_FILE=$(mktemp)
@@ -77,19 +126,19 @@ fi
 echo "› Release notes preview:"
 sed 's/^/    /' "$NOTES_FILE"
 
-# ---- 5. Tag and push --------------------------------------------------------
+# ---- 6. Tag and push --------------------------------------------------------
 echo "› Tagging $VERSION at HEAD…"
 git tag -a "$VERSION" -m "Release $VERSION"
 git push origin "$VERSION"
 
-# ---- 6. Create the draft release -------------------------------------------
+# ---- 7. Create the draft release -------------------------------------------
 echo "› Creating draft release…"
 gh release create "$VERSION" \
     --draft \
     --title "$VERSION" \
     --notes-file "$NOTES_FILE"
 
-# ---- 7. Summary -------------------------------------------------------------
+# ---- 8. Summary -------------------------------------------------------------
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 echo
 echo "✓ Draft release created: https://github.com/$REPO/releases/tag/$VERSION"
