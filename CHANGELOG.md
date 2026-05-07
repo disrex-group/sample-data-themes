@@ -4,6 +4,16 @@ Theme-based demo data for Magento 2 / MageOS. All notable changes to
 this project are documented here.
 
 
+## [1.1.1](https://github.com/disrex-group/sample-data-themes/compare/v1.1.0..v1.1.1) - 2026-05-07
+
+### 🐛 Bug Fixes
+
+- *(release)* Brace-quote $NEW_MAJOR_MINOR before unicode ellipsis - ([8f0e0e3](https://github.com/disrex-group/sample-data-themes/commit/8f0e0e36b21042a493fa4390d497eab7fbf7a57f))
+- *(theme-home-living)* Require core ^1.1 (was ^1.0) - ([c758fd6](https://github.com/disrex-group/sample-data-themes/commit/c758fd63d7cfd63705d792fa5d6e3f68a97d6204))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Auto-bump sibling disrex/* require constraints - ([a3ebc36](https://github.com/disrex-group/sample-data-themes/commit/a3ebc36cb52a64449b5de24a0168cf14196b0e6a))
 ## [1.1.0](https://github.com/disrex-group/sample-data-themes/compare/v1.0.2..v1.1.0) - 2026-05-06
 
 ### 🚀 Features
@@ -18,6 +28,7 @@ this project are documented here.
 
 ### 📚 Documentation
 
+- *(changelog)* Bump for v1.1.0 - ([0386b9b](https://github.com/disrex-group/sample-data-themes/commit/0386b9bb002b3f5646c673aa76dc7835247bc61d))
 - *(claude)* Document wizard-first deploy + alias-based flags - ([d2fdeea](https://github.com/disrex-group/sample-data-themes/commit/d2fdeea220d83fc462feed75c9292e38edcfb28a))
 ## [1.0.2](https://github.com/disrex-group/sample-data-themes/compare/v1.0.1..v1.0.2) - 2026-05-06
 
