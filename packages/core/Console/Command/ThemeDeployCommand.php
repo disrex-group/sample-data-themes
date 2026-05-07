@@ -904,17 +904,64 @@ class ThemeDeployCommand extends Command
                 }
             }
 
-            // Walk describeOptions() for configurable fixtures and prompt
-            // each option with the current value as the default.
+            // Per-fixture configuration. The default UX is "use the
+            // built-in defaults, don't ask" — power users opt in via
+            // a one-line gate. Three branches:
+            //   keep    — return immediately with no prompts (most users)
+            //   common  — prompt only options with level=common
+            //   all     — prompt every option, including level=advanced
             $schema = $this->describeOptionsFor($cls);
+            if ($schema === []) {
+                continue;
+            }
+            $configMode = select(
+                label: sprintf('Configure %s?', $alias),
+                options: [
+                    'keep' => 'Keep defaults — recommended',
+                    'common' => 'Tweak common settings',
+                    'all' => 'Show every option (advanced)',
+                ],
+                default: 'keep',
+            );
+            if ($configMode === 'keep') {
+                continue;
+            }
             foreach ($schema as $key => $meta) {
+                $level = (string) ($meta['level'] ?? 'common');
+                if ($configMode === 'common' && $level !== 'common') {
+                    continue;
+                }
                 $current = $options[$shortName][$key] ?? ($meta['default'] ?? '');
-                $value = text(
-                    label: sprintf('%s • %s', $alias, $key),
-                    placeholder: is_scalar($current) ? (string) $current : '',
-                    default: is_scalar($current) ? (string) $current : '',
-                    hint: is_string($meta['description'] ?? null) ? (string) $meta['description'] : '',
-                );
+                $label = is_string($meta['label'] ?? null)
+                    ? (string) $meta['label']
+                    : ucfirst(str_replace('-', ' ', $key));
+                $hint = is_string($meta['description'] ?? null)
+                    ? (string) $meta['description']
+                    : '';
+
+                // Use a select() for enum-typed options so the user
+                // gets arrow-key choices instead of having to type
+                // "all-five" / "realistic" / "random" themselves.
+                $isEnum = ($meta['type'] ?? null) === 'enum'
+                    && is_array($meta['enum'] ?? null)
+                    && $meta['enum'] !== [];
+                if ($isEnum) {
+                    /** @var array<int, string> $enumValues */
+                    $enumValues = $meta['enum'];
+                    $value = (string) select(
+                        label: $label,
+                        options: array_combine($enumValues, $enumValues),
+                        default: is_scalar($current) ? (string) $current : (string) $enumValues[0],
+                        hint: $hint,
+                    );
+                } else {
+                    $value = text(
+                        label: $label,
+                        placeholder: is_scalar($current) ? (string) $current : '',
+                        default: is_scalar($current) ? (string) $current : '',
+                        hint: $hint,
+                    );
+                }
                 if ($value !== '' && (string) $value !== (string) $current) {
                     $options[$shortName][$key] = (string) $value;
                 }

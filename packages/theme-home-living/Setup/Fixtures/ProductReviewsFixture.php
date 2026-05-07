@@ -428,18 +428,24 @@ class ProductReviewsFixture implements
             'per-product' => [
                 'type' => 'range',
                 'default' => '2-8',
+                'label' => 'Reviews per product',
+                'level' => 'common',
                 'description' => 'How many reviews to generate per visible product. Accepts a single int (3) or a range (2-8).',
             ],
             'star-skew' => [
                 'type' => 'enum',
                 'enum' => ['realistic', 'all-five', 'random'],
                 'default' => 'realistic',
-                'description' => 'Star-rating distribution. "realistic" weights toward 4-5★ (default); "all-five" makes every review 5★; "random" gives uniform 1-5★.',
+                'label' => 'Star-rating distribution',
+                'level' => 'common',
+                'description' => 'realistic = 4-5★ skew (default); all-five = every review is 5★; random = uniform 1-5★.',
             ],
             'seed' => [
                 'type' => 'int',
                 'default' => self::SEED,
-                'description' => 'Random seed. Same seed + same catalog produces the same reviews on every run.',
+                'label' => 'Random seed',
+                'level' => 'advanced',
+                'description' => 'Same seed + same catalog produces the same reviews on every run. Rarely useful unless you need bit-for-bit reproducibility.',
             ],
         ];
     }
