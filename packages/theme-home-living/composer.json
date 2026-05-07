@@ -1,6 +1,6 @@
 {
     "name": "disrex/sample-data-theme-home-living",
-    "description": "Scandinavian-inspired Home & Living sample-data theme for Magento 2 / MageOS — EN + NL translations.",
+    "description": "Scandinavian-inspired Home & Living sample-data theme for Magento 2 / MageOS \u2014 EN + NL translations.",
     "type": "magento2-module",
     "license": "MIT",
     "keywords": [
@@ -16,7 +16,7 @@
     "require": {
         "php": "~8.2.0 || ~8.3.0 || ~8.4.0",
         "disrex/sample-data-themes-core": "^1.1",
-        "disrex/sample-data-theme-home-living-media": "^1.0",
+        "disrex/sample-data-theme-home-living-media": "^1.1",
         "magento/framework": "^103.0"
     },
     "autoload": {
